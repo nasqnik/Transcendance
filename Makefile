@@ -1,4 +1,5 @@
-.PHONY: up down build restart logs ps shell clean fclean app delapp
+.PHONY: up down build restart logs ps shell clean fclean app delapp \
+        up-front build-front restart-front logs-front shell-front
 
 up:
 	docker compose up -d backend
@@ -26,6 +27,21 @@ ps:
 
 shell:
 	docker compose exec backend /bin/sh
+
+up-front:
+	docker compose up -d frontend
+
+build-front:
+	docker compose build frontend
+
+restart-front:
+	docker compose restart frontend
+
+logs-front:
+	docker compose logs -f frontend
+
+shell-front:
+	docker compose exec frontend /bin/sh
 
 # production make commands -> to delete later
 
