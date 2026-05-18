@@ -1,0 +1,36 @@
+{
+  "app": {
+    "name": "KiddoPath"
+  },
+  "nav": {
+    "login": "تسجيل الدخول",
+    "signup": "إنشاء حساب"
+  },
+  "landing": {
+    "tagline": "التعلم ممتع، مهمة تلو الأخرى."
+  },
+  "auth": {
+    "email": "البريد الإلكتروني",
+    "password": "كلمة المرور",
+    "name": "الاسم الكامل",
+    "login": "تسجيل الدخول",
+    "signup": "إنشاء حساب",
+    "forgotPassword": "نسيت كلمة المرور؟",
+    "orContinueWith": "أو تابع باستخدام",
+    "google": "المتابعة مع Google"
+  },
+  "dashboard": {
+    "greeting": "مرحباً، {{name}}!",
+    "tasks": "مهامي",
+    "rewards": "المكافآت"
+  },
+  "character": {
+    "create": "أنشئ شخصيتك",
+    "name": "سمِّ شخصيتك",
+    "stats": "وزّع نقاطك"
+  },
+  "errors": {
+    "required": "هذا الحقل مطلوب",
+    "invalidEmail": "البريد الإلكتروني غير صالح"
+  }
+}
