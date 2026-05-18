@@ -1,0 +1,36 @@
+{
+  "app": {
+    "name": "KiddoPath"
+  },
+  "nav": {
+    "login": "Войти",
+    "signup": "Зарегистрироваться"
+  },
+  "landing": {
+    "tagline": "Учиться весело — задача за задачей."
+  },
+  "auth": {
+    "email": "Эл. почта",
+    "password": "Пароль",
+    "name": "Полное имя",
+    "login": "Войти",
+    "signup": "Зарегистрироваться",
+    "forgotPassword": "Забыли пароль?",
+    "orContinueWith": "или продолжить с",
+    "google": "Продолжить с Google"
+  },
+  "dashboard": {
+    "greeting": "Привет, {{name}}!",
+    "tasks": "Мои задачи",
+    "rewards": "Награды"
+  },
+  "character": {
+    "create": "Создай персонажа",
+    "name": "Назови персонажа",
+    "stats": "Распредели очки"
+  },
+  "errors": {
+    "required": "Это поле обязательно",
+    "invalidEmail": "Неверный адрес эл. почты"
+  }
+}

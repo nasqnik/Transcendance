@@ -1,0 +1,36 @@
+{
+  "app": {
+    "name": "KiddoPath"
+  },
+  "nav": {
+    "login": "Log in",
+    "signup": "Sign up"
+  },
+  "landing": {
+    "tagline": "Learning made fun, one task at a time."
+  },
+  "auth": {
+    "email": "Email",
+    "password": "Password",
+    "name": "Full name",
+    "login": "Log in",
+    "signup": "Sign up",
+    "forgotPassword": "Forgot password?",
+    "orContinueWith": "or continue with",
+    "google": "Continue with Google"
+  },
+  "dashboard": {
+    "greeting": "Hey, {{name}}!",
+    "tasks": "My Tasks",
+    "rewards": "Rewards"
+  },
+  "character": {
+    "create": "Create your character",
+    "name": "Name your character",
+    "stats": "Distribute your stats"
+  },
+  "errors": {
+    "required": "This field is required",
+    "invalidEmail": "Invalid email address"
+  }
+}
