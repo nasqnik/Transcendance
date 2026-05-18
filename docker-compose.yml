@@ -40,5 +40,20 @@ services:
       DB_PORT: ${DB_PORT}
     command: python manage.py runserver 0.0.0.0:8000
 
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: react_frontend
+    restart: unless-stopped
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - frontend_node_modules:/app/node_modules
+    environment:
+      VITE_POLL: "true"
+
 volumes:
   postgres_data:
+  frontend_node_modules:
