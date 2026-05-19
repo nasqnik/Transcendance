@@ -1,5 +1,21 @@
-.PHONY: up down build restart logs ps shell clean fclean app delapp \
+export DOCKER_BUILDKIT := 1
+export COMPOSE_DOCKER_CLI_BUILD := 1
+
+SSL_CERT := security/ssl/server.crt
+SSL_KEY := security/ssl/server.key
+
+.PHONY: all up down build build-all restart logs ps shell clean fclean app delapp ssl ssl-if-missing \
         up-front build-front restart-front logs-front shell-front
+
+# Full stack: build only when Dockerfiles/context changed (layer cache), then start all services.
+all: ssl-if-missing
+	docker compose up -d --build
+
+ssl-if-missing:
+	@test -f $(SSL_CERT) && test -f $(SSL_KEY) || $(MAKE) ssl
+
+build-all:
+	docker compose build
 
 up:
 	docker compose up -d backend
@@ -42,6 +58,9 @@ logs-front:
 
 shell-front:
 	docker compose exec frontend /bin/sh
+
+ssl:
+	bash security/ssl/certificate_gen.sh
 
 # production make commands -> to delete later
 

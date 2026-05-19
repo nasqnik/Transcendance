@@ -1,0 +1,3 @@
+.env
+security/ssl/server.key
+security/ssl/server.crt
