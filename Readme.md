@@ -16,6 +16,8 @@ That starts Docker and runs database migrations.
 
 Open **https://localhost** (accept the self-signed certificate warning).
 
+API docs (Swagger): **https://localhost/api/docs/**
+
 ## Useful commands
 
 | Command | What it does |

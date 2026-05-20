@@ -95,7 +95,7 @@ class KidSignupSerializer(serializers.Serializer):
                 role=GuardianInvitation.Role.PRIMARY,
             ).first()
             if invitation:
-                data["invite_url"] = build_guardian_invite_url()
+                data["invite_url"] = build_guardian_invite_url(invitation.token)
                 data["invite_token"] = str(invitation.token)
         return data
 
@@ -278,7 +278,7 @@ class InviteSecondParentSerializer(serializers.Serializer):
             "message": "Second parent invitation sent.",
         }
         if settings.DEBUG:
-            data["invite_url"] = build_guardian_invite_url()
+            data["invite_url"] = build_guardian_invite_url(instance.token)
             data["invite_token"] = str(instance.token)
         return data
 

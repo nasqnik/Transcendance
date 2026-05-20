@@ -122,12 +122,12 @@ Default access token lifetime: **60 minutes**. Refresh: **7 days** (env-configur
 ### Flow B — Parent accepts (primary)
 
 ```text
-1. Parent opens app (email links to FRONTEND_URL, e.g. https://localhost)
-2. Parent enters invitation code from email OR app loads token from query/deep link you add
-3. GET /guardian-invitations/{token}/  → show kid name, status, required email
+1. Parent clicks email link → `https://localhost/accept-invite?token=<uuid>`
+2. Frontend reads `token` from URL → `GET /guardian-invitations/{token}/`
 4. If no account: POST /auth/register/  (email must match invite_email)
-5. POST /auth/token/  → store access + refresh
-6. POST /guardian-invitations/accept/  with { "token": "<uuid>" } + Bearer parent access
+3. Parent registers or logs in (email must match `invite_email`)
+4. POST /auth/token/  → store access + refresh
+5. POST /guardian-invitations/accept/  with { "token": "<uuid>" } + Bearer parent access
 7. Kid becomes active; parent is linked
 ```
 
@@ -196,7 +196,7 @@ Max **2** accepted guardians per kid.
 
 ```json
 {
-  "invite_url": "https://localhost",
+  "invite_url": "https://localhost/accept-invite?token=uuid",
   "invite_token": "uuid"
 }
 ```
@@ -445,7 +445,7 @@ Must be a kid refresh token (`role: "kid"` in payload).
 
 When a kid signs up or invites a parent, the backend emails `parent_email` with:
 
-- Link to **`FRONTEND_URL`** (e.g. `https://localhost`) — your app home / accept flow entry
+- Link to **`{FRONTEND_URL}/accept-invite?token={uuid}`** — frontend reads `token` and calls `GET /guardian-invitations/{token}/`
 - **Invitation code** (`invite_token` UUID) — parent enters this in your UI, then you call `GET /guardian-invitations/{token}/` and accept flow
 - Instruction to register/login with the **same email** as `invite_email`
 

@@ -4,9 +4,9 @@ Guardian invitation — {{ app_name }}
 
 Please use this email when you sign up or log in: {{ invite_email }}
 
-Open {{ app_name }}: {{ invite_url }}
+Accept invitation: {{ invite_url }}
 
-Invitation code (use in the app when accepting): {{ invite_token }}
+If the link does not work, enter this code in the app: {{ invite_token }}
 {% if expires_at %}
 This invitation expires on {{ expires_at }}.
 {% endif %}

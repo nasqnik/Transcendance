@@ -38,7 +38,7 @@ class Command(BaseCommand):
             "kid_name": "Alex (sample)",
             "kid_username": "alex_sample",
             "invite_email": recipient,
-            "invite_url": build_guardian_invite_url(),
+            "invite_url": build_guardian_invite_url(token),
             "invite_token": str(token),
             "role_label": role_label,
             "expires_at": timezone.now() + timedelta(days=7),

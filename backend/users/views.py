@@ -1,3 +1,4 @@
+from drf_spectacular.utils import extend_schema
 from rest_framework import generics, status
 from rest_framework.exceptions import NotFound
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -32,6 +33,7 @@ class ParentRegisterView(generics.CreateAPIView):
     serializer_class = ParentRegisterSerializer
 
 
+@extend_schema(request=GoogleLoginSerializer)
 class GoogleLoginView(APIView):
     """Parent sign-in via Google Identity Services id_token."""
 
@@ -73,6 +75,7 @@ class AcceptGuardianInviteView(generics.GenericAPIView):
         )
 
 
+@extend_schema(request=KidTokenObtainSerializer)
 class KidTokenObtainView(APIView):
     permission_classes = [AllowAny]
 
@@ -82,6 +85,7 @@ class KidTokenObtainView(APIView):
         return Response(serializer.validated_data, status=status.HTTP_200_OK)
 
 
+@extend_schema(request=KidTokenRefreshSerializer)
 class KidTokenRefreshView(APIView):
     permission_classes = [AllowAny]
 
