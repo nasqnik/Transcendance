@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Guardian invitation — {{ app_name }}</title>
+  </head>
+  <body
+    style="
+      margin: 0;
+      padding: 0;
+      background-color: #f4eefb;
+      font-family: Arial, sans-serif;
+      line-height: 1.6;
+      color: #222;
+    "
+  >
+    <!-- Outer table: full-width background (works in Gmail, Outlook, etc.) -->
+    <table
+      role="presentation"
+      width="100%"
+      cellpadding="0"
+      cellspacing="0"
+      border="0"
+      style="background-color: #eef4fb; padding: 24px 16px;"
+    >
+      <tr>
+        <td align="center">
+          <!-- Inner card: white content area -->
+          <table
+            role="presentation"
+            width="100%"
+            cellpadding="0"
+            cellspacing="0"
+            border="0"
+            style="
+              max-width: 560px;
+              background-color: #ffffff;
+              border-radius: 8px;
+              padding: 28px 32px;
+            "
+          >
+            <tr>
+              <td>
+                <h2 style="color: #1a5fb4; margin: 0 0 0.5em 0;">Guardian invitation</h2>
+                <p style="margin: 0 0 1em 0;">
+                  <strong>{{ kid_name }}</strong> (username: {{ kid_username }}) registered on
+                  <strong>{{ app_name }}</strong> and listed you as their
+                  <strong>{{ role_label }}</strong>.
+                </p>
+                <p style="margin: 0 0 1em 0;">
+                  Please use this email when you sign up or log in:<br />
+                  <strong>{{ invite_email }}</strong>
+                </p>
+                <p style="margin: 1.5em 0;">
+                  <a
+                    href="{{ invite_url }}"
+                    style="
+                      display: inline-block;
+                      background: #1a5fb4;
+                      color: #fff;
+                      text-decoration: none;
+                      padding: 12px 24px;
+                      border-radius: 6px;
+                      font-weight: bold;
+                    "
+                  >
+                    Accept invitation
+                  </a>
+                </p>
+                <p style="font-size: 0.9em; color: #555; margin: 0 0 1em 0;">
+                  Or copy this link: <a href="{{ invite_url }}" style="color: #1a5fb4;">{{ invite_url }}</a>
+                </p>
+                <p style="font-size: 0.9em; color: #444; margin: 0 0 1em 0;">
+                  If the link does not work, enter this code in the app:<br />
+                  <code
+                    style="
+                      background: #f4f4f4;
+                      padding: 4px 8px;
+                      border-radius: 4px;
+                    "
+                    >{{ invite_token }}</code
+                  >
+                </p>
+                {% if expires_at %}
+                <p style="color: #666; font-size: 0.9em; margin: 0 0 1em 0;">
+                  This invitation expires on {{ expires_at }}.
+                </p>
+                {% endif %}
+                <p style="color: #888; font-size: 0.85em; margin: 0;">
+                  If you did not expect this email, you can ignore it.
+                </p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>

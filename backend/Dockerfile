@@ -1,7 +1,8 @@
 FROM python:3.12-slim
 
-ARG DOCKER_UID=1000
-ARG DOCKER_GID=1000
+# From project .env via docker-compose build.args (see DOCKER_UID / DOCKER_GID)
+ARG DOCKER_UID
+ARG DOCKER_GID
 
 RUN groupadd --gid "${DOCKER_GID}" app \
     && useradd --uid "${DOCKER_UID}" --gid app --create-home --shell /bin/bash --home-dir /home/app app
