@@ -1,0 +1,14 @@
+Guardian invitation — {{ app_name }}
+
+{{ kid_name }} (username: {{ kid_username }}) registered on {{ app_name }} and listed you as their {{ role_label }}.
+
+Please use this email when you sign up or log in: {{ invite_email }}
+
+Open {{ app_name }}: {{ invite_url }}
+
+Invitation code (use in the app when accepting): {{ invite_token }}
+{% if expires_at %}
+This invitation expires on {{ expires_at }}.
+{% endif %}
+
+If you did not expect this email, you can ignore it.

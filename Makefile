@@ -4,12 +4,16 @@ export COMPOSE_DOCKER_CLI_BUILD := 1
 SSL_CERT := security/ssl/server.crt
 SSL_KEY := security/ssl/server.key
 
-.PHONY: all up down build build-all restart logs ps shell clean fclean app delapp ssl ssl-if-missing \
+.PHONY: all up down build build-all restart logs ps shell clean fclean app delapp ssl ssl-if-missing migrate \
         up-front build-front restart-front logs-front shell-front
 
 # Full stack: build only when Dockerfiles/context changed (layer cache), then start all services.
 all: ssl-if-missing
 	docker compose up -d --build
+	$(MAKE) migrate
+
+migrate:
+	docker compose exec backend python manage.py migrate
 
 ssl-if-missing:
 	@test -f $(SSL_CERT) && test -f $(SSL_KEY) || $(MAKE) ssl
@@ -85,7 +89,7 @@ app:
 	@echo "2) Create backend/$(name)/urls.py if needed"
 	@echo "3) Create models, then run migrations:"
 	@echo "   docker compose exec backend python manage.py makemigrations"
-	@echo "   docker compose exec backend python manage.py migrate"
+	@echo "   make migrate"
 
 # usage: make delapp name=<app_name>
 delapp:

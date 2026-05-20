@@ -11,24 +11,25 @@ cp .env.example .env
 make all
 ```
 
-`make all` creates SSL certs if missing, builds images (only when Dockerfiles or build context changed), and starts **db**, **backend**, **frontend**, and **nginx**.
+`make all` creates SSL certs if missing, builds images (only when Dockerfiles or build context changed), starts **db**, **backend**, **frontend**, and **nginx**, and runs **database migrations**.
+
+First-time only (optional):
+
+```bash
+docker compose exec backend python manage.py createsuperuser
+```
+
+To run migrations again later: `make migrate`
 
 | URL | What |
 |-----|------|
 | https://localhost | App via nginx (HTTPS) |
 | https://localhost/admin/ | Django admin via nginx |
-| https://localhost/api/… | API via nginx (`/api` prefix stripped) |
+| https://localhost/api/… | API via nginx |
 | http://localhost:8000 | Backend directly |
 | http://localhost:5173 | Frontend directly (Vite) |
 
 Accept the self-signed certificate warning in the browser (dev only).
-
-First-time Django setup:
-
-```bash
-docker compose exec backend python manage.py migrate
-docker compose exec backend python manage.py createsuperuser
-```
 
 ## System packages (Ubuntu)
 
@@ -148,6 +149,7 @@ Rebuilds use Docker layer cache: running `make all` again is fast if nothing in 
 
 | Command | Description |
 |---------|-------------|
+| `make migrate` | Apply database migrations |
 | `make up` | Start backend (+ db) |
 | `make build` | Build backend image |
 | `make restart` | Restart backend |
@@ -175,7 +177,7 @@ Migrations (after models change):
 
 ```bash
 docker compose exec backend python manage.py makemigrations
-docker compose exec backend python manage.py migrate
+make migrate
 ```
 
 ## Troubleshooting

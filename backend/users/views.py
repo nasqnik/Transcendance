@@ -48,8 +48,6 @@ class GuardianInviteDetailView(generics.RetrieveAPIView):
 
     permission_classes = [AllowAny]
     serializer_class = GuardianInviteDetailSerializer
-    lookup_field = "token"
-    lookup_url_kwarg = "token"
 
     def get_object(self):
         try:

@@ -61,7 +61,7 @@ def create_secondary_guardian_invitation(
     return invitation
 
 
-def build_guardian_invite_url(token=None) -> str:
+def build_guardian_invite_url() -> str:
     return settings.FRONTEND_URL.rstrip("/")
 
 
@@ -112,7 +112,7 @@ def accept_guardian_invitation(
 
 
 def send_guardian_invitation_email(invitation) -> None:
-    invite_url = build_guardian_invite_url(invitation.token)
+    invite_url = build_guardian_invite_url()
     role_label = (
         "primary guardian"
         if invitation.role == GuardianInvitation.Role.PRIMARY
