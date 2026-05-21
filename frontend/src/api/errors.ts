@@ -46,6 +46,23 @@ function genericError(): string {
 }
 
 /**
+ * Returns true if the error means "no account with this email exists".
+ * Used on the accept-invite page to auto-switch to signup.
+ */
+export function isAccountNotFound(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false
+  const err = error as { response?: { data?: unknown } }
+  const data = err.response?.data
+  if (!data || typeof data !== 'object') return false
+  const obj = data as Record<string, unknown>
+  const detail = typeof obj.detail === 'string' ? obj.detail.trim() : ''
+  return (
+    detail === 'No active account found with the given credentials.' ||
+    detail === 'No active account found with the given credentials'
+  )
+}
+
+/**
  * Turn axios/DRF errors into a localized string.
  * Known backend messages are mapped to `errors.api.*`; others use `errors.apiUnknown`.
  */

@@ -2,55 +2,56 @@ import { useEffect, useState } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import Button from '../components/Button'
-import FormAlert from '../components/FormAlert'
 import FormField from '../components/FormField'
+import FormAlert from '../components/FormAlert'
 import LanguageSwitcher from '../components/LanguageSwitcher'
-import { isEmpty, isValidEmail } from '../utils/validation'
 import useAuthStore from '../store/authStore'
 import {
   getInvitation,
   acceptInvitation,
   loginParent,
+  registerParent,
   decodeJWT,
   parseApiError,
   type InvitationDetails,
 } from '../api/auth'
-
-// This page handles the link parents receive in their email:
-//   https://localhost/accept-invite?token=<uuid>
-//
-// Flow:
-//   1. Read token from URL → fetch invite details from backend
-//   2. If parent is already logged in → accept automatically
-//   3. If not logged in → show login form → accept after login
-//   4. Show success screen when done
+import { isAccountNotFound } from '../api/errors'
+import { isEmpty } from '../utils/validation'
 
 type PageState =
   | { status: 'loading' }
   | { status: 'error'; message: string }
-  | { status: 'login'; invitation: InvitationDetails }
+  | { status: 'form'; invitation: InvitationDetails }
   | { status: 'wrong_account'; invitation: InvitationDetails; loggedInEmail: string }
-  | { status: 'accepting'; invitation: InvitationDetails }
+  | { status: 'accepting' }
   | { status: 'success'; kidName: string }
 
 export default function AcceptInvite() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
-  const { isAuthenticated, currentUser, login } = useAuthStore()
+  const { isAuthenticated, currentUser, login, logout } = useAuthStore()
 
   const [state, setState] = useState<PageState>({ status: 'loading' })
 
-  // Login form state (shown when parent isn't logged in yet)
-  const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [username, setUsername] = useState('')
   const [formError, setFormError] = useState<string | null>(null)
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const inviteToken = searchParams.get('token')
 
-  // ── Step 1: load the invitation on mount ──────────────────────────────────
+  function clearFieldError(field: string) {
+    setFieldErrors(prev => {
+      if (!prev[field]) return prev
+      const next = { ...prev }
+      delete next[field]
+      return next
+    })
+  }
+
+  // ── Load invitation on mount ──────────────────────────────────────────────
   useEffect(() => {
     if (!inviteToken) {
       setState({ status: 'error', message: t('invite.notFound') })
@@ -65,24 +66,25 @@ export default function AcceptInvite() {
         }
 
         if (isAuthenticated && currentUser?.role === 'parent') {
-          // Parent is already logged in — check if it's the right account
           if (currentUser.email !== invitation.invite_email) {
             setState({ status: 'wrong_account', invitation, loggedInEmail: currentUser.email! })
           } else {
-            // Right account — auto-accept
             doAccept(invitation)
           }
         } else {
-          // Not logged in — show login form
-          setState({ status: 'login', invitation })
+          // Pre-fill username hint from invitation if provided
+          if (invitation.invited_username_hint) {
+            setUsername(invitation.invited_username_hint)
+          }
+          setState({ status: 'form', invitation })
         }
       })
       .catch(() => setState({ status: 'error', message: t('invite.notFound') }))
   }, [inviteToken])
 
-  // ── Step 2: call the accept endpoint ─────────────────────────────────────
+  // ── Accept the invitation ─────────────────────────────────────────────────
   async function doAccept(invitation: InvitationDetails) {
-    setState({ status: 'accepting', invitation })
+    setState({ status: 'accepting' })
     try {
       await acceptInvitation(invitation.token)
       setState({ status: 'success', kidName: invitation.kid_name })
@@ -91,70 +93,51 @@ export default function AcceptInvite() {
     }
   }
 
-  function clearFieldError(field: string) {
-    setFieldErrors(prev => {
-      if (!prev[field]) return prev
-      const next = { ...prev }
-      delete next[field]
-      return next
-    })
-  }
-
-  function validateLoginForm(): Record<string, string> {
-    const errs: Record<string, string> = {}
-    if (isEmpty(email)) errs.email = t('errors.required')
-    else if (!isValidEmail(email)) errs.email = t('errors.invalidEmail')
-    if (isEmpty(password)) errs.password = t('errors.required')
-    return errs
-  }
-
-  // ── Step 3: login form submit ─────────────────────────────────────────────
-  async function handleLogin(e: React.FormEvent) {
+  // ── Form submit ───────────────────────────────────────────────────────────
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (state.status !== 'login') return
+    if (state.status !== 'form') return
 
     setFormError(null)
-
-    const errs = validateLoginForm()
-    if (Object.keys(errs).length > 0) {
-      setFieldErrors(errs)
-      return
-    }
+    const errs: Record<string, string> = {}
+    if (isEmpty(username)) errs.username = t('errors.required')
+    if (isEmpty(password)) errs.password = t('errors.required')
+    if (Object.keys(errs).length > 0) { setFieldErrors(errs); return }
     setFieldErrors({})
-
     setIsSubmitting(true)
 
+    const { invitation } = state
+
     try {
-      const { access, refresh } = await loginParent(email, password)
+      // Try login first — works if the parent already has an account
+      const { access, refresh } = await loginParent(invitation.invite_email, password)
       const payload = decodeJWT(access)
-
-      // Check that the logged-in email matches the invite
-      if (payload.email !== state.invitation.invite_email) {
-        setFormError(
-          t('invite.wrongAccount', {
-            email: payload.email,
-            inviteEmail: state.invitation.invite_email,
-          })
-        )
-        setIsSubmitting(false)
-        return
-      }
-
-      // Store in auth store then accept
       login(
-        {
-          id: payload.user_id as string,
-          username: payload.username as string,
-          email: payload.email as string,
-          role: 'parent',
-        },
+        { id: payload.user_id as string, username: payload.username as string, email: payload.email as string, role: 'parent' },
         access,
         refresh,
       )
+      await doAccept(invitation)
 
-      await doAccept(state.invitation)
     } catch (err) {
-      setFormError(parseApiError(err))
+      if (isAccountNotFound(err)) {
+        // No account yet — register then login
+        try {
+          await registerParent(invitation.invite_email, username, password)
+          const { access, refresh } = await loginParent(invitation.invite_email, password)
+          const payload = decodeJWT(access)
+          login(
+            { id: payload.user_id as string, username: payload.username as string, email: payload.email as string, role: 'parent' },
+            access,
+            refresh,
+          )
+          await doAccept(invitation)
+        } catch (registerErr) {
+          setFormError(parseApiError(registerErr))
+        }
+      } else {
+        setFormError(parseApiError(err))
+      }
     } finally {
       setIsSubmitting(false)
     }
@@ -180,7 +163,7 @@ export default function AcceptInvite() {
         </>
       )}
 
-      {state.status === 'login' && (
+      {state.status === 'form' && (
         <>
           <div className="text-5xl" aria-hidden="true">👋</div>
           <h1 id="invite-heading" className="font-heading text-3xl font-bold text-primary-700 text-center">
@@ -193,31 +176,25 @@ export default function AcceptInvite() {
             {t('invite.invitedAs', { email: state.invitation.invite_email })}
           </p>
 
-          <p className="font-body text-sm font-semibold text-gray-700">
-            {t('invite.loginToAccept')}
-          </p>
-
           <form
             noValidate
             className="flex w-80 max-w-full flex-col gap-4"
-            onSubmit={handleLogin}
+            onSubmit={handleSubmit}
             aria-labelledby="invite-heading"
           >
             {formError && <FormAlert message={formError} />}
+
             <FormField
-              id="email"
-              label={t('auth.email')}
-              type="email"
-              value={email}
-              placeholder={t('auth.emailHint')}
+              id="username"
+              label={t('auth.username')}
+              type="text"
+              value={username}
               required
-              autoComplete="email"
-              error={fieldErrors.email}
-              onChange={e => {
-                setEmail(e.target.value)
-                clearFieldError('email')
-              }}
+              autoComplete="username"
+              error={fieldErrors.username}
+              onChange={e => { setUsername(e.target.value); clearFieldError('username') }}
             />
+
             <FormField
               id="password"
               label={t('auth.password')}
@@ -226,11 +203,9 @@ export default function AcceptInvite() {
               required
               autoComplete="current-password"
               error={fieldErrors.password}
-              onChange={e => {
-                setPassword(e.target.value)
-                clearFieldError('password')
-              }}
+              onChange={e => { setPassword(e.target.value); clearFieldError('password') }}
             />
+
             <Button variant="primary" type="submit" disabled={isSubmitting}>
               {isSubmitting ? t('invite.accepting') : t('invite.accept')}
             </Button>
@@ -250,6 +225,15 @@ export default function AcceptInvite() {
               inviteEmail: state.invitation.invite_email,
             })}
           </p>
+          <Button
+            variant="secondary"
+            onClick={() => {
+              logout()
+              setState({ status: 'form', invitation: state.invitation })
+            }}
+          >
+            {t('nav.logout')}
+          </Button>
         </>
       )}
 
