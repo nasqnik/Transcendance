@@ -80,6 +80,28 @@ export async function registerParent(email: string, username: string, password: 
   return res.data
 }
 
+// GET /guardian-invitations/{token}/  — fetch invite details before accepting
+export interface InvitationDetails {
+  token: string
+  status: 'pending' | 'accepted' | 'declined' | 'expired' | 'revoked'
+  role: 'primary' | 'secondary'
+  invite_email: string
+  expires_at: string
+  kid_name: string
+  kid_id: string
+}
+
+export async function getInvitation(token: string): Promise<InvitationDetails> {
+  const res = await client.get<InvitationDetails>(`/guardian-invitations/${token}/`)
+  return res.data
+}
+
+// POST /guardian-invitations/accept/  — parent accepts the invite (requires parent JWT)
+export async function acceptInvitation(token: string) {
+  const res = await client.post('/guardian-invitations/accept/', { token })
+  return res.data
+}
+
 // POST /kids/signup/  — kid registration
 // Kid can't log in until a parent accepts the email invitation
 export async function signupKid(

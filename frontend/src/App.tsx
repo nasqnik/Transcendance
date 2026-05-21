@@ -8,6 +8,7 @@ import Landing from './pages/Landing'
 import Login from './pages/Login'
 import Signup from './pages/Signup'
 import ForgotPassword from './pages/ForgotPassword'
+import AcceptInvite from './pages/AcceptInvite'
 import ChildDashboard from './pages/ChildDashboard'
 import ParentDashboard from './pages/ParentDashboard'
 import CharacterCreation from './pages/CharacterCreation'
@@ -33,6 +34,7 @@ export default function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/accept-invite" element={<AcceptInvite />} />
 
           {/* Child (protected) */}
           <Route path="/dashboard" element={

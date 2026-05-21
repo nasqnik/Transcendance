@@ -51,6 +51,20 @@
     "signupFormReady": "Sign up form is ready",
     "loginFormReady": "Login form is ready"
   },
+  "invite": {
+    "loading": "Loading invitation...",
+    "notFound": "This invitation is invalid or has expired.",
+    "title": "You've been invited!",
+    "subtitle": "{{name}} signed up on KiddoPath and listed you as their guardian.",
+    "invitedAs": "Invitation sent to: {{email}}",
+    "loginToAccept": "Log in to accept",
+    "accept": "Accept invitation",
+    "accepting": "Accepting...",
+    "successTitle": "All set!",
+    "successHint": "{{name}} can now log in to KiddoPath.",
+    "goToDashboard": "Go to your dashboard",
+    "wrongAccount": "You're logged in as {{email}}, but this invitation was sent to {{inviteEmail}}. Please log out and try again with the correct account."
+  },
   "errors": {
     "required": "This field is required",
     "invalidEmail": "Invalid email address"

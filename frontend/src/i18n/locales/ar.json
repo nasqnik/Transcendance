@@ -51,6 +51,20 @@
     "signupFormReady": "نموذج التسجيل جاهز",
     "loginFormReady": "نموذج تسجيل الدخول جاهز"
   },
+  "invite": {
+    "loading": "جارٍ تحميل الدعوة...",
+    "notFound": "هذه الدعوة غير صالحة أو انتهت صلاحيتها.",
+    "title": "لقد تمت دعوتك!",
+    "subtitle": "سجّل {{name}} في KiddoPath وأضافك كوليّ أمر.",
+    "invitedAs": "أُرسلت الدعوة إلى: {{email}}",
+    "loginToAccept": "سجّل دخولك للقبول",
+    "accept": "قبول الدعوة",
+    "accepting": "جارٍ القبول...",
+    "successTitle": "تمّ!",
+    "successHint": "يمكن لـ {{name}} الآن تسجيل الدخول إلى KiddoPath.",
+    "goToDashboard": "اذهب إلى لوحة التحكم",
+    "wrongAccount": "أنت مسجّل دخولك بـ {{email}}، لكن الدعوة أُرسلت إلى {{inviteEmail}}. يرجى تسجيل الخروج والمحاولة بالحساب الصحيح."
+  },
   "errors": {
     "required": "هذا الحقل مطلوب",
     "invalidEmail": "البريد الإلكتروني غير صالح"
