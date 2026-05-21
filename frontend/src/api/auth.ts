@@ -86,6 +86,15 @@ export async function verifyToken(token: string): Promise<boolean> {
   }
 }
 
+// POST /kids/invite-parent/  — kid invites a second guardian (requires kid JWT)
+export async function inviteParent(parent_email: string, invited_username_hint?: string) {
+  const res = await client.post('/kids/invite-parent/', {
+    parent_email,
+    ...(invited_username_hint ? { invited_username_hint } : {}),
+  })
+  return res.data
+}
+
 // POST /kids/signup/  — kid registration
 // Kid can't log in until a parent accepts the email invitation
 export async function signupKid(

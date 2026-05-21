@@ -54,6 +54,17 @@
     "signupFormReady": "Sign up form is ready",
     "loginFormReady": "Login form is ready"
   },
+  "inviteParent": {
+    "title": "Invite a parent",
+    "hint": "Add a second guardian to your account",
+    "email": "Parent's email",
+    "usernameHint": "Their name (optional)",
+    "submit": "Send invitation",
+    "sending": "Sending...",
+    "success": "Invitation sent to {{email}}!",
+    "successHint": "Ask your parent to check their email.",
+    "sendAnother": "Send another invitation"
+  },
   "invite": {
     "loading": "Loading invitation...",
     "notFound": "This invitation is invalid or has expired.",
