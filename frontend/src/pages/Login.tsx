@@ -109,6 +109,9 @@ export default function Login() {
 
       {role !== null && (
         <>
+          <p className="sr-only" aria-live="polite" role="status">
+            {t('a11y.loginFormReady')}
+          </p>
           <form
             noValidate
             className="flex w-80 max-w-full flex-col gap-4"
@@ -143,7 +146,7 @@ export default function Login() {
               {role === 'parent' && (
                 <Link
                   to="/forgot-password"
-                  className="font-body text-sm text-primary-600 underline hover:text-primary-700 focus-ring rounded-sm self-end"
+                  className="font-body text-sm text-primary-600 underline hover:text-primary-700 focus-ring rounded-sm ltr:self-end rtl:self-start"
                 >
                   {t('auth.forgotPassword')}
                 </Link>
