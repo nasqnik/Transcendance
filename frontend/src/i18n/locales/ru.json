@@ -4,7 +4,8 @@
   },
   "nav": {
     "login": "Войти",
-    "signup": "Зарегистрироваться"
+    "signup": "Зарегистрироваться",
+    "logout": "Выйти"
   },
   "landing": {
     "tagline": "Учиться весело — задача за задачей."
@@ -12,6 +13,8 @@
   "auth": {
     "email": "Эл. почта",
     "emailHint": "you@example.com",
+    "emailOrUsername": "Эл. почта или имя пользователя",
+    "emailOrUsernamHint": "you@example.com или ваш никнейм",
     "password": "Пароль",
     "name": "Полное имя",
     "login": "Войти",

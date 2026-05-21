@@ -4,7 +4,8 @@
   },
   "nav": {
     "login": "Log in",
-    "signup": "Sign up"
+    "signup": "Sign up",
+    "logout": "Log out"
   },
   "landing": {
     "tagline": "Learning made fun, one task at a time."
@@ -12,6 +13,8 @@
   "auth": {
     "email": "Email",
     "emailHint": "you@example.com",
+    "emailOrUsername": "Email or username",
+    "emailOrUsernamHint": "you@example.com or your username",
     "password": "Password",
     "name": "Full name",
     "login": "Log in",

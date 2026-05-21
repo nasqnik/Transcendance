@@ -4,7 +4,8 @@
   },
   "nav": {
     "login": "تسجيل الدخول",
-    "signup": "إنشاء حساب"
+    "signup": "إنشاء حساب",
+    "logout": "تسجيل الخروج"
   },
   "landing": {
     "tagline": "التعلم ممتع، مهمة تلو الأخرى."
@@ -12,6 +13,8 @@
   "auth": {
     "email": "البريد الإلكتروني",
     "emailHint": "you@example.com",
+    "emailOrUsername": "البريد الإلكتروني أو اسم المستخدم",
+    "emailOrUsernamHint": "you@example.com أو اسم المستخدم",
     "password": "كلمة المرور",
     "name": "الاسم الكامل",
     "login": "تسجيل الدخول",

@@ -12,25 +12,24 @@ export default function Login() {
   const { t } = useTranslation()
   const login = useAuthStore(state => state.login)
 
-  const [role, setRole] = useState<'parent' | 'kid' | null>(null)
-  // "identifier" is the email for parents, username for kids
   const [identifier, setIdentifier] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
 
+  // If the input contains @ we treat it as an email → parent login
+  // Otherwise it's a username → kid login
+  const isEmail = identifier.includes('@')
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!role) return
-
     setError(null)
     setIsLoading(true)
 
     try {
-      if (role === 'parent') {
+      if (isEmail) {
         const { access, refresh } = await loginParent(identifier, password)
         const payload = decodeJWT(access)
-
         login(
           {
             id: payload.user_id as string,
@@ -45,7 +44,6 @@ export default function Login() {
       } else {
         const { access, refresh } = await loginKid(identifier, password)
         const payload = decodeJWT(access)
-
         login(
           {
             id: payload.kid_id as string,
@@ -70,97 +68,58 @@ export default function Login() {
         {t('auth.login')}
       </h1>
 
-      {/* Role selector — same pattern as Signup */}
-      <fieldset
-        aria-labelledby="role-selector-label"
-        className="flex w-80 max-w-full flex-col items-center gap-4 border-0 p-0 m-0 min-w-0"
+      <form
+        className="flex w-80 max-w-full flex-col gap-4"
+        onSubmit={handleSubmit}
+        aria-labelledby="login-heading"
       >
-        <p
-          id="role-selector-label"
-          className="font-body text-sm font-semibold text-gray-700 text-center w-full m-0"
-        >
-          {t('auth.roleSelector')}
-        </p>
-        <div role="radiogroup" aria-required="true" className="flex gap-4">
-          <Button
-            role="radio"
-            variant={role === 'parent' ? 'primary' : 'secondary'}
-            onClick={() => { setRole('parent'); setIdentifier(''); setError(null) }}
-            aria-checked={role === 'parent'}
-          >
-            {t('auth.parent')}
-          </Button>
-          <Button
-            role="radio"
-            variant={role === 'kid' ? 'primary' : 'secondary'}
-            onClick={() => { setRole('kid'); setIdentifier(''); setError(null) }}
-            aria-checked={role === 'kid'}
-          >
-            {t('auth.child')}
-          </Button>
-        </div>
-      </fieldset>
-
-      {role !== null && (
-        <>
-          <p className="sr-only" aria-live="polite" role="status">
-            {t('a11y.loginFormReady')}
+        {error && (
+          <p role="alert" className="font-body text-sm text-red-600 text-center bg-red-50 rounded-xl px-4 py-3">
+            {error}
           </p>
-          <form
-            className="flex w-80 max-w-full flex-col gap-4"
-            onSubmit={handleSubmit}
-            aria-labelledby="login-heading"
-          >
-            {/* Error message from the API */}
-            {error && (
-              <p role="alert" className="font-body text-sm text-red-600 text-center bg-red-50 rounded-xl px-4 py-3">
-                {error}
-              </p>
-            )}
+        )}
 
-            <div className="flex flex-col gap-1">
-              <label htmlFor="identifier" className="font-body text-sm font-semibold text-gray-700">
-                {role === 'parent' ? t('auth.email') : t('auth.username')}
-              </label>
-              <Input
-                id="identifier"
-                type={role === 'parent' ? 'email' : 'text'}
-                value={identifier}
-                placeholder={role === 'parent' ? t('auth.emailHint') : undefined}
-                required
-                autoComplete={role === 'parent' ? 'email' : 'username'}
-                onChange={e => setIdentifier(e.target.value)}
-              />
-            </div>
+        <div className="flex flex-col gap-1">
+          <label htmlFor="identifier" className="font-body text-sm font-semibold text-gray-700">
+            {t('auth.emailOrUsername')}
+          </label>
+          <Input
+            id="identifier"
+            type="text"
+            value={identifier}
+            placeholder={t('auth.emailOrUsernamHint')}
+            required
+            autoComplete="username"
+            onChange={e => setIdentifier(e.target.value)}
+          />
+        </div>
 
-            <div className="flex flex-col gap-1">
-              <label htmlFor="password" className="font-body text-sm font-semibold text-gray-700">
-                {t('auth.password')}
-              </label>
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                required
-                autoComplete="current-password"
-                onChange={e => setPassword(e.target.value)}
-              />
-              {role === 'parent' && (
-                <Link
-                  to="/forgot-password"
-                  className="font-body text-sm text-primary-600 underline hover:text-primary-700 focus-ring rounded-sm self-end"
-                >
-                  {t('auth.forgotPassword')}
-                </Link>
-              )}
-            </div>
+        <div className="flex flex-col gap-1">
+          <label htmlFor="password" className="font-body text-sm font-semibold text-gray-700">
+            {t('auth.password')}
+          </label>
+          <Input
+            id="password"
+            type="password"
+            value={password}
+            required
+            autoComplete="current-password"
+            onChange={e => setPassword(e.target.value)}
+          />
+          {isEmail && (
+            <Link
+              to="/forgot-password"
+              className="font-body text-sm text-primary-600 underline hover:text-primary-700 focus-ring rounded-sm self-end"
+            >
+              {t('auth.forgotPassword')}
+            </Link>
+          )}
+        </div>
 
-            <Button variant="primary" type="submit" disabled={isLoading}>
-              {isLoading ? t('auth.loggingIn') : t('auth.login')}
-            </Button>
-          </form>
-        </>
-      )}
+        <Button variant="primary" type="submit" disabled={isLoading}>
+          {isLoading ? t('auth.loggingIn') : t('auth.login')}
+        </Button>
+      </form>
 
       <p className="font-body text-sm text-gray-700 text-center">
         {t('auth.noAccount')}{' '}
