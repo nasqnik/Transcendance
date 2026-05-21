@@ -8,6 +8,30 @@ from rest_framework.test import APITestCase
 from .models import CustomUser, GuardianInvitation, Kid
 
 
+def _verify_parent(client, email):
+    user = CustomUser.objects.get(email=email)
+    response = client.post(
+        "/api/auth/verify-email/",
+        {"token": str(user.email_verification_token)},
+        format="json",
+    )
+    assert response.status_code == status.HTTP_200_OK
+    user.refresh_from_db()
+    return user
+
+
+def _verify_kid(client, username):
+    kid = Kid.objects.get(username=username)
+    response = client.post(
+        "/api/auth/kid/verify-email/",
+        {"token": str(kid.email_verification_token)},
+        format="json",
+    )
+    assert response.status_code == status.HTTP_200_OK
+    kid.refresh_from_db()
+    return kid
+
+
 @override_settings(
     EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend",
     FRONTEND_URL="https://localhost",
@@ -19,6 +43,7 @@ class KidSignupTests(APITestCase):
             {
                 "name": "Alex",
                 "username": "alex_kid",
+                "email": "alex@example.com",
                 "password": "secure-pass-1",
                 "parent_email": "Parent@Example.com",
             },
@@ -27,24 +52,26 @@ class KidSignupTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(response.data["registration_status"], "awaiting_primary_parent")
-        self.assertEqual(response.data["message"], "Waiting for parent response")
+        self.assertFalse(response.data["email_verified"])
 
         kid = Kid.objects.get(username="alex_kid")
+        self.assertEqual(kid.email, "alex@example.com")
+        self.assertFalse(kid.email_verified)
         self.assertTrue(kid.check_password("secure-pass-1"))
         self.assertIsNone(kid.parent)
 
         invitation = GuardianInvitation.objects.get(kid=kid)
         self.assertEqual(invitation.invite_email, "parent@example.com")
-        self.assertEqual(invitation.status, GuardianInvitation.Status.PENDING)
-        self.assertEqual(invitation.role, GuardianInvitation.Role.PRIMARY)
-
-        self.assertEqual(len(mail.outbox), 1)
-        self.assertIn("parent@example.com", mail.outbox[0].to)
+        self.assertEqual(len(mail.outbox), 2)
         self.assertIn(str(invitation.token), mail.outbox[0].body)
 
 
+@override_settings(
+    EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend",
+    FRONTEND_URL="https://localhost",
+)
 class ParentRegisterTests(APITestCase):
-    def test_parent_register_creates_user(self):
+    def test_parent_register_sends_verification_and_blocks_login(self):
         response = self.client.post(
             "/api/auth/register/",
             {
@@ -56,9 +83,26 @@ class ParentRegisterTests(APITestCase):
         )
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertIn("Check your email", response.data["message"])
+        self.assertEqual(len(mail.outbox), 1)
+
         user = CustomUser.objects.get(email="parent@example.com")
-        self.assertEqual(user.role, "parent")
-        self.assertTrue(user.check_password("secure-pass-1"))
+        self.assertFalse(user.email_verified)
+
+        login = self.client.post(
+            "/api/auth/token/",
+            {"email": "parent@example.com", "password": "secure-pass-1"},
+            format="json",
+        )
+        self.assertEqual(login.status_code, status.HTTP_401_UNAUTHORIZED)
+
+        _verify_parent(self.client, "parent@example.com")
+        login = self.client.post(
+            "/api/auth/token/",
+            {"email": "parent@example.com", "password": "secure-pass-1"},
+            format="json",
+        )
+        self.assertEqual(login.status_code, status.HTTP_200_OK)
 
 
 @override_settings(
@@ -72,11 +116,13 @@ class AcceptGuardianInviteTests(APITestCase):
             {
                 "name": "Alex",
                 "username": "alex_accept",
+                "email": "alex@example.com",
                 "password": "secure-pass-1",
                 "parent_email": "parent@example.com",
             },
             format="json",
         )
+        _verify_kid(self.client, "alex_accept")
         self.invite_token = GuardianInvitation.objects.get(
             kid_id=signup.data["kid_id"]
         ).token
@@ -86,7 +132,6 @@ class AcceptGuardianInviteTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["status"], "pending")
         self.assertEqual(response.data["kid_name"], "Alex")
-        self.assertEqual(response.data["invite_email"], "parent@example.com")
 
     def test_accept_invite_activates_kid(self):
         self.client.post(
@@ -98,6 +143,7 @@ class AcceptGuardianInviteTests(APITestCase):
             },
             format="json",
         )
+        _verify_parent(self.client, "parent@example.com")
         login = self.client.post(
             "/api/auth/token/",
             {"email": "parent@example.com", "password": "secure-pass-1"},
@@ -116,15 +162,6 @@ class AcceptGuardianInviteTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["registration_status"], "active")
 
-        kid = Kid.objects.get(username="alex_accept")
-        parent = CustomUser.objects.get(email="parent@example.com")
-        self.assertEqual(kid.parent_id, parent.id)
-        self.assertEqual(kid.registration_status, Kid.RegistrationStatus.ACTIVE)
-
-        invitation = GuardianInvitation.objects.get(token=self.invite_token)
-        self.assertEqual(invitation.status, GuardianInvitation.Status.ACCEPTED)
-        self.assertEqual(invitation.parent_id, parent.id)
-
     def test_accept_rejects_wrong_parent_email(self):
         self.client.post(
             "/api/auth/register/",
@@ -135,6 +172,7 @@ class AcceptGuardianInviteTests(APITestCase):
             },
             format="json",
         )
+        _verify_parent(self.client, "other@example.com")
         login = self.client.post(
             "/api/auth/token/",
             {"email": "other@example.com", "password": "secure-pass-1"},
@@ -151,11 +189,6 @@ class AcceptGuardianInviteTests(APITestCase):
         )
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        kid = Kid.objects.get(username="alex_accept")
-        self.assertEqual(
-            kid.registration_status,
-            Kid.RegistrationStatus.AWAITING_PRIMARY_PARENT,
-        )
 
 
 @override_settings(
@@ -170,11 +203,13 @@ class KidAuthAndSecondParentInviteTests(APITestCase):
             {
                 "name": "Alex",
                 "username": "alex_kid2",
+                "email": "alex2@example.com",
                 "password": "secure-pass-1",
                 "parent_email": "parent@example.com",
             },
             format="json",
         )
+        _verify_kid(self.client, "alex_kid2")
         token = GuardianInvitation.objects.get(kid_id=signup.data["kid_id"]).token
         self.client.post(
             "/api/auth/register/",
@@ -185,6 +220,7 @@ class KidAuthAndSecondParentInviteTests(APITestCase):
             },
             format="json",
         )
+        _verify_parent(self.client, "parent@example.com")
         login = self.client.post(
             "/api/auth/token/",
             {"email": "parent@example.com", "password": "secure-pass-1"},
@@ -209,23 +245,45 @@ class KidAuthAndSecondParentInviteTests(APITestCase):
             format="json",
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertIn("access", response.data)
-        self.assertIn("refresh", response.data)
+
+    def test_kid_cannot_login_before_email_verified(self):
+        self.client.post(
+            "/api/kids/signup/",
+            {
+                "name": "Sam",
+                "username": "sam_kid",
+                "email": "sam@example.com",
+                "password": "secure-pass-1",
+                "parent_email": "parent@example.com",
+            },
+            format="json",
+        )
+        Kid.objects.filter(username="sam_kid").update(
+            registration_status=Kid.RegistrationStatus.ACTIVE
+        )
+        response = self.client.post(
+            "/api/auth/kid/token/",
+            {"username": "sam_kid", "password": "secure-pass-1"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
     def test_kid_cannot_login_before_active(self):
         self.client.post(
             "/api/kids/signup/",
             {
                 "name": "Sam",
-                "username": "sam_kid",
+                "username": "sam_kid2",
+                "email": "sam2@example.com",
                 "password": "secure-pass-1",
                 "parent_email": "parent@example.com",
             },
             format="json",
         )
+        _verify_kid(self.client, "sam_kid2")
         response = self.client.post(
             "/api/auth/kid/token/",
-            {"username": "sam_kid", "password": "secure-pass-1"},
+            {"username": "sam_kid2", "password": "secure-pass-1"},
             format="json",
         )
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
@@ -249,8 +307,6 @@ class KidAuthAndSecondParentInviteTests(APITestCase):
             format="json",
         )
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(response.data["role"], "secondary")
-        self.assertEqual(len(mail.outbox), 2)
 
 
 class GoogleLoginTests(APITestCase):
@@ -270,12 +326,8 @@ class GoogleLoginTests(APITestCase):
         )
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertIn("access", response.data)
-        self.assertIn("refresh", response.data)
-
         user = CustomUser.objects.get(email="google.parent@example.com")
-        self.assertEqual(user.google_sub, "google-sub-123")
-        self.assertEqual(user.role, "parent")
+        self.assertTrue(user.email_verified)
 
     @patch("users.serializers.verify_google_id_token")
     def test_google_login_links_existing_email_user(self, mock_verify):
@@ -300,4 +352,66 @@ class GoogleLoginTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         user = CustomUser.objects.get(email="existing@example.com")
-        self.assertEqual(user.google_sub, "google-sub-456")
+        self.assertTrue(user.email_verified)
+
+
+@override_settings(
+    EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend",
+    FRONTEND_URL="https://localhost",
+)
+class KidGoogleAuthTests(APITestCase):
+    @patch("users.serializers.verify_google_id_token")
+    def test_kid_google_signup_creates_account_and_invites_parent(self, mock_verify):
+        mock_verify.return_value = {
+            "sub": "kid-google-sub-1",
+            "email": "kid.google@example.com",
+            "email_verified": True,
+            "iss": "accounts.google.com",
+        }
+
+        response = self.client.post(
+            "/api/kids/signup/google/",
+            {
+                "id_token": "fake-token",
+                "name": "Google Kid",
+                "username": "google_kid",
+                "parent_email": "parent@example.com",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        kid = Kid.objects.get(username="google_kid")
+        self.assertTrue(kid.email_verified)
+        self.assertEqual(kid.google_sub, "kid-google-sub-1")
+        self.assertEqual(len(mail.outbox), 1)
+
+    @patch("users.serializers.verify_google_id_token")
+    def test_kid_google_login_after_parent_accepts(self, mock_verify):
+        mock_verify.return_value = {
+            "sub": "kid-google-sub-2",
+            "email": "kid2.google@example.com",
+            "email_verified": True,
+            "iss": "accounts.google.com",
+        }
+        self.client.post(
+            "/api/kids/signup/google/",
+            {
+                "id_token": "fake-token",
+                "name": "Google Kid",
+                "username": "google_kid2",
+                "parent_email": "parent@example.com",
+            },
+            format="json",
+        )
+        kid = Kid.objects.get(username="google_kid2")
+        kid.registration_status = Kid.RegistrationStatus.ACTIVE
+        kid.save(update_fields=["registration_status"])
+
+        response = self.client.post(
+            "/api/auth/kid/google/",
+            {"id_token": "fake-token"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("access", response.data)

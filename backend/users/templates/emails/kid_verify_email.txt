@@ -1,0 +1,13 @@
+Verify your {{ app_name }} account
+
+Hi {{ kid_name }},
+
+Please confirm your email address ({{ email }}) by opening this link:
+
+{{ verify_url }}
+
+This link expires in {{ expires_hours }} hours.
+
+After verifying your email, your account will still wait for a parent to accept before you can log in.
+
+If you did not create an account, you can ignore this email.

@@ -37,7 +37,8 @@ def get_or_create_parent_from_google(idinfo: dict) -> CustomUser:
                 "This email is linked to a different Google account."
             )
         user.google_sub = google_sub
-        user.save(update_fields=["google_sub"])
+        user.email_verified = True
+        user.save(update_fields=["google_sub", "email_verified"])
         return user
 
     username_base = email.split("@")[0] or f"google_{google_sub[:8]}"
@@ -47,4 +48,5 @@ def get_or_create_parent_from_google(idinfo: dict) -> CustomUser:
         password=get_random_string(32),
         role="parent",
         google_sub=google_sub,
+        email_verified=True,
     )

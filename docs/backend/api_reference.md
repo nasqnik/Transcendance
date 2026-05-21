@@ -46,8 +46,8 @@ Two separate JWT stacks:
 
 | Actor | Login endpoint | Token claims (access) | Use on |
 |--------|----------------|------------------------|--------|
-| **Parent** | `POST /auth/token/` | `role: "parent"`, `user_id`, `email`, `username` | Parent routes (e.g. accept invite) |
-| **Kid** | `POST /auth/kid/token/` | `role: "kid"`, `kid_id`, `username` | Kid routes (e.g. invite second parent) |
+| **Parent** | `POST /auth/token/` or `POST /auth/google/` | `role: "parent"`, `user_id`, `email`, `username` | Parent routes (e.g. accept invite) |
+| **Kid** | `POST /auth/kid/token/` or `POST /auth/kid/google/` | `role: "kid"`, `kid_id`, `username` | Kid routes (e.g. invite second parent) |
 
 **Refresh:**
 
@@ -58,7 +58,9 @@ Two separate JWT stacks:
 
 **Verify (optional):** `POST /auth/token/verify/` with `{ "token": "<access>" }`.
 
-Default access token lifetime: **60 minutes**. Refresh: **7 days** (env-configurable on backend).
+**Email verification (password signup):** required before login. Google sign-in sets `email_verified` automatically.
+
+Default access token lifetime: **60 minutes**. Refresh: **7 days**. Email verification links: **24 hours** (env-configurable).
 
 ---
 
@@ -95,15 +97,19 @@ Default access token lifetime: **60 minutes**. Refresh: **7 days** (env-configur
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| `POST` | `/kids/signup/` | Public | Kid registration + email primary parent |
-| `POST` | `/auth/register/` | Public | Parent account creation |
-| `POST` | `/auth/token/` | Public | Parent login → JWT |
+| `POST` | `/kids/signup/` | Public | Kid registration (email + password) + verify email + invite parent |
+| `POST` | `/kids/signup/google/` | Public | Kid registration via Google + invite parent |
+| `POST` | `/auth/kid/verify-email/` | Public | Confirm kid email (password signup) |
+| `POST` | `/auth/kid/google/` | Public | Kid Google login (must be `active`) |
+| `POST` | `/auth/register/` | Public | Parent account creation (sends verify email) |
+| `POST` | `/auth/verify-email/` | Public | Confirm parent email (password signup) |
+| `POST` | `/auth/token/` | Public | Parent login → JWT (requires `email_verified`) |
 | `POST` | `/auth/token/refresh/` | Public | Refresh parent JWT |
 | `POST` | `/auth/token/verify/` | Public | Validate parent access token |
 | `GET` | `/guardian-invitations/{token}/` | Public | Invitation details (parent accept screen) |
 | `POST` | `/guardian-invitations/accept/` | Parent JWT | Accept invitation |
 | `POST` | `/auth/google/` | Public | Parent Google login → JWT |
-| `POST` | `/auth/kid/token/` | Public | Kid login → JWT (kid must be `active`) |
+| `POST` | `/auth/kid/token/` | Public | Kid login → JWT (`email_verified` + `active`) |
 | `POST` | `/auth/kid/token/refresh/` | Public | Refresh kid JWT |
 | `POST` | `/kids/invite-parent/` | Kid JWT | Invite second guardian |
 
@@ -114,9 +120,10 @@ Default access token lifetime: **60 minutes**. Refresh: **7 days** (env-configur
 ### Flow A — Kid signup
 
 ```text
-1. POST /kids/signup/
-2. Show UI: "Waiting for parent" (registration_status: awaiting_primary_parent)
-3. Parent receives email (see Flow B)
+1. POST /kids/signup/  (includes kid email)  OR  POST /kids/signup/google/
+2. Password path: kid verifies email via /kid/verify-email?token=...
+3. Show UI: "Waiting for parent" (registration_status: awaiting_primary_parent)
+4. Parent receives email (see Flow B)
 ```
 
 ### Flow B — Parent accepts (primary)
@@ -124,10 +131,10 @@ Default access token lifetime: **60 minutes**. Refresh: **7 days** (env-configur
 ```text
 1. Parent clicks email link → `https://localhost/accept-invite?token=<uuid>`
 2. Frontend reads `token` from URL → `GET /guardian-invitations/{token}/`
-4. If no account: POST /auth/register/  (email must match invite_email)
-3. Parent registers or logs in (email must match `invite_email`)
-4. POST /auth/token/  → store access + refresh
-5. POST /guardian-invitations/accept/  with { "token": "<uuid>" } + Bearer parent access
+3. If no account: POST /auth/register/  (email must match invite_email)
+4. Password path: verify email → POST /auth/verify-email/
+5. POST /auth/token/  OR  POST /auth/google/  → store access + refresh
+6. POST /guardian-invitations/accept/  with { "token": "<uuid>" } + Bearer parent access
 7. Kid becomes active; parent is linked
 ```
 
@@ -139,9 +146,10 @@ Default access token lifetime: **60 minutes**. Refresh: **7 days** (env-configur
 ### Flow C — Kid login (after parent accepted)
 
 ```text
-1. POST /auth/kid/token/  { username, password }
-2. Store kid access + refresh
-3. Use kid access for kid-only APIs
+1. POST /auth/kid/token/  OR  POST /auth/kid/google/
+2. Requires email_verified (password path) and registration_status active
+3. Store kid access + refresh
+4. Use kid access for kid-only APIs
 ```
 
 ### Flow D — Invite second parent
@@ -168,6 +176,7 @@ Max **2** accepted guardians per kid.
 {
   "name": "Alex",
   "username": "alex_kid",
+  "email": "alex@example.com",
   "password": "secure-pass-1",
   "parent_email": "parent@example.com"
 }
@@ -177,6 +186,7 @@ Max **2** accepted guardians per kid.
 |-------|------|--------|
 | `name` | string | Display name |
 | `username` | string | Unique, kid login id |
+| `email` | string | Kid's email (unique); verification required before login |
 | `password` | string | Min 8 chars, Django validators |
 | `parent_email` | string | Primary guardian invite target |
 
@@ -186,9 +196,11 @@ Max **2** accepted guardians per kid.
 {
   "kid_id": "uuid",
   "username": "alex_kid",
+  "email": "alex@example.com",
   "name": "Alex",
   "registration_status": "awaiting_primary_parent",
-  "message": "Waiting for parent response"
+  "email_verified": false,
+  "message": "Check your email to verify your account. Waiting for parent response."
 }
 ```
 
@@ -197,13 +209,14 @@ Max **2** accepted guardians per kid.
 ```json
 {
   "invite_url": "https://localhost/accept-invite?token=uuid",
-  "invite_token": "uuid"
+  "invite_token": "uuid",
+  "verify_url": "https://localhost/kid/verify-email?token=uuid"
 }
 ```
 
 **Errors `400`:** field validation, e.g. `{ "username": ["This username is already taken."] }`
 
-**Side effect:** sends guardian invite email to `parent_email` with link to app + invitation code.
+**Side effects:** sends kid verify email + guardian invite email to `parent_email`.
 
 ---
 
@@ -228,11 +241,49 @@ Max **2** accepted guardians per kid.
   "user_id": "uuid",
   "email": "parent@example.com",
   "username": "parent1",
-  "role": "parent"
+  "role": "parent",
+  "email_verified": false,
+  "message": "Check your email to verify your account."
 }
 ```
 
+**DEBUG only:** may include `verify_url` (`https://localhost/verify-email?token=uuid`).
+
+**Side effect:** sends parent verify email. Login blocked until verified.
+
 **Errors `400`:** e.g. `{ "email": ["user with this email already exists."] }`
+
+---
+
+### `POST /auth/verify-email/`
+
+**Auth:** none · **Body:** `{ "token": "uuid" }` from `/verify-email?token=...`
+
+**Success `200`:** `{ "email": "...", "email_verified": true, "message": "Email verified successfully." }`
+
+---
+
+### `POST /auth/kid/verify-email/`
+
+**Auth:** none · **Body:** `{ "token": "uuid" }` from `/kid/verify-email?token=...`
+
+**Success `200`:** `{ "kid_id": "uuid", "email_verified": true, "registration_status": "...", "message": "..." }`
+
+---
+
+### `POST /kids/signup/google/`
+
+**Auth:** none · **Body:** `{ "id_token", "name", "username", "parent_email" }`
+
+Creates kid with `email_verified=true` (Google). Sends guardian invite only (no verify email).
+
+---
+
+### `POST /auth/kid/google/`
+
+**Auth:** none · **Body:** `{ "id_token" }` · Kid must be `active`.
+
+**Success `200`:** `{ "access", "refresh" }` (kid JWT)
 
 ---
 
@@ -265,6 +316,8 @@ Max **2** accepted guardians per kid.
   "detail": "No active account found with the given credentials"
 }
 ```
+
+Or `"Email not verified."` if password is correct but account not verified.
 
 ---
 

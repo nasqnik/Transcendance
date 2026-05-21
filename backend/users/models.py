@@ -27,6 +27,17 @@ class CustomUser(AbstractUser):
         blank=True,
     )
 
+    email_verified = models.BooleanField(default=False)
+
+    email_verification_token = models.UUIDField(
+        null=True,
+        blank=True,
+        unique=True,
+        editable=False,
+    )
+
+    email_verification_sent_at = models.DateTimeField(null=True, blank=True)
+
     created_at = models.DateTimeField(auto_now_add=True)
 
     USERNAME_FIELD = "email"
@@ -67,6 +78,24 @@ class Kid(models.Model):
     username = models.CharField(max_length=100, unique=True)
 
     email = models.EmailField(unique=True, null=True, blank=True)
+
+    email_verified = models.BooleanField(default=False)
+
+    google_sub = models.CharField(
+        max_length=255,
+        unique=True,
+        null=True,
+        blank=True,
+    )
+
+    email_verification_token = models.UUIDField(
+        null=True,
+        blank=True,
+        unique=True,
+        editable=False,
+    )
+
+    email_verification_sent_at = models.DateTimeField(null=True, blank=True)
 
     password_hash = models.TextField(null=True, blank=True)
 
