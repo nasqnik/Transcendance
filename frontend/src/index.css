@@ -32,8 +32,22 @@
   --font-body: 'Nunito', sans-serif;
 }
 
+/* Arabic — override fonts to Cairo which supports Arabic script */
+:lang(ar) {
+  --font-heading: 'Cairo', sans-serif;
+  --font-body: 'Cairo', sans-serif;
+}
+
 @layer components {
   .focus-ring {
     @apply outline-none focus-visible:ring-2 focus-visible:ring-primary-100 focus-visible:ring-offset-2;
+  }
+
+  .alert-error {
+    @apply text-danger-500 bg-danger-50;
+  }
+
+  .field-error {
+    @apply font-body text-sm text-danger-700;
   }
 }

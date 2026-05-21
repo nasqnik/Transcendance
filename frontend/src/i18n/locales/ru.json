@@ -4,7 +4,8 @@
   },
   "nav": {
     "login": "Войти",
-    "signup": "Зарегистрироваться"
+    "signup": "Зарегистрироваться",
+    "logout": "Выйти"
   },
   "landing": {
     "tagline": "Учиться весело — задача за задачей."
@@ -12,6 +13,8 @@
   "auth": {
     "email": "Эл. почта",
     "emailHint": "you@example.com",
+    "emailOrUsername": "Эл. почта или имя пользователя",
+    "emailOrUsernamHint": "you@example.com или ваш никнейм",
     "password": "Пароль",
     "name": "Полное имя",
     "login": "Войти",
@@ -26,7 +29,12 @@
     "parentEmail": "Email родителя",
     "roleSelector": "Я...",
     "noAccount": "Нет аккаунта?",
-    "hasAccount": "Уже есть аккаунт?"
+    "hasAccount": "Уже есть аккаунт?",
+    "loggingIn": "Входим...",
+    "signingUp": "Регистрируем...",
+    "waitingForParent": "Проверьте почту родителя!",
+    "waitingForParentHint": "Мы отправили приглашение на {{email}}. Попросите родителя перейти по ссылке в письме, чтобы активировать ваш аккаунт.",
+    "backToHome": "На главную"
   },
   "dashboard": {
     "greeting": "Привет, {{name}}!",
@@ -43,10 +51,68 @@
     "switchLanguage": "Переключить на {{language}}",
     "goToSignup": "Зарегистрироваться — создать аккаунт",
     "goToLogin": "Войти в аккаунт",
-    "signupFormReady": "Форма регистрации готова"
+    "signupFormReady": "Форма регистрации готова",
+    "loginFormReady": "Форма входа готова"
+  },
+  "inviteParent": {
+    "title": "Пригласить родителя",
+    "hint": "Добавьте второго опекуна к вашему аккаунту",
+    "email": "Email родителя",
+    "usernameHint": "Их имя (необязательно)",
+    "submit": "Отправить приглашение",
+    "sending": "Отправляем...",
+    "success": "Приглашение отправлено на {{email}}!",
+    "successHint": "Попросите родителя проверить почту.",
+    "sendAnother": "Отправить ещё одно приглашение"
+  },
+  "invite": {
+    "loading": "Загружаем приглашение...",
+    "notFound": "Это приглашение недействительно или истекло.",
+    "title": "Вас пригласили!",
+    "subtitle": "{{name}} зарегистрировался на KiddoPath и указал вас как опекуна.",
+    "invitedAs": "Приглашение отправлено на: {{email}}",
+    "loginToAccept": "Войдите, чтобы принять",
+    "accept": "Принять приглашение",
+    "accepting": "Принимаем...",
+    "successTitle": "Готово!",
+    "successHint": "{{name}} теперь может войти в KiddoPath.",
+    "goToDashboard": "Перейти в панель",
+    "wrongAccount": "Вы вошли как {{email}}, но приглашение было отправлено на {{inviteEmail}}. Выйдите и попробуйте с правильного аккаунта."
   },
   "errors": {
     "required": "Это поле обязательно",
-    "invalidEmail": "Неверный адрес эл. почты"
+    "invalidEmail": "Неверный адрес эл. почты",
+    "boundary": {
+      "title": "Что-то пошло не так",
+      "message": "Обновите страницу.",
+      "retry": "Попробовать снова"
+    },
+    "generic": "Что-то пошло не так. Попробуйте ещё раз.",
+    "apiUnknown": "Что-то пошло не так. Попробуйте ещё раз.",
+    "api": {
+      "invalidCredentials": "Аккаунт с такими данными не найден.",
+      "invalidKidCredentials": "Детский аккаунт с такими данными не найден.",
+      "kidNotActiveYet": "Аккаунт ещё не активен. Попросите родителя принять приглашение.",
+      "kidNotActive": "Этот детский аккаунт не активен.",
+      "emailExists": "Аккаунт с таким email уже существует.",
+      "usernameExists": "Это имя пользователя уже занято.",
+      "usernameTaken": "Это имя пользователя уже занято.",
+      "invitationNotFound": "Приглашение недействительно или истекло.",
+      "invitationExpired": "Срок действия приглашения истёк.",
+      "invitationEmailMismatch": "Ваш email не совпадает с приглашением.",
+      "invitationNotPending": "Это приглашение больше не ожидает ответа.",
+      "accountInactive": "Этот аккаунт неактивен.",
+      "invalidRefreshToken": "Сессия истекла. Войдите снова.",
+      "notKidRefreshToken": "Недействительная сессия. Войдите снова.",
+      "kidNotFound": "Аккаунт не найден.",
+      "maxGuardians": "У этого ребёнка уже максимум опекунов.",
+      "tokenNotValid": "Сессия недействительна. Войдите снова.",
+      "googleNotConfigured": "Вход через Google сейчас недоступен.",
+      "invalidGoogleToken": "Не удалось войти через Google. Попробуйте снова.",
+      "invalidGoogleIssuer": "Не удалось войти через Google. Попробуйте снова.",
+      "googleEmailNotVerified": "Подтвердите email в Google и попробуйте снова.",
+      "googleNoEmail": "В аккаунте Google нет email.",
+      "googleAccountConflict": "Этот email привязан к другому аккаунту Google."
+    }
   }
 }

@@ -4,7 +4,8 @@
   },
   "nav": {
     "login": "Log in",
-    "signup": "Sign up"
+    "signup": "Sign up",
+    "logout": "Log out"
   },
   "landing": {
     "tagline": "Learning made fun, one task at a time."
@@ -12,6 +13,8 @@
   "auth": {
     "email": "Email",
     "emailHint": "you@example.com",
+    "emailOrUsername": "Email or username",
+    "emailOrUsernamHint": "you@example.com or your username",
     "password": "Password",
     "name": "Full name",
     "login": "Log in",
@@ -26,7 +29,12 @@
     "parentEmail": "Parent's email",
     "roleSelector": "I am a...",
     "noAccount": "Don't have an account?",
-    "hasAccount": "Already have an account?"
+    "hasAccount": "Already have an account?",
+    "loggingIn": "Logging in...",
+    "signingUp": "Signing up...",
+    "waitingForParent": "Check your parent's email!",
+    "waitingForParentHint": "We sent an invite to {{email}}. Ask your parent to click the link in the email to activate your account.",
+    "backToHome": "Go to home"
   },
   "dashboard": {
     "greeting": "Hey, {{name}}!",
@@ -43,10 +51,68 @@
     "switchLanguage": "Switch to {{language}}",
     "goToSignup": "Sign up — create a new account",
     "goToLogin": "Log in to your account",
-    "signupFormReady": "Sign up form is ready"
+    "signupFormReady": "Sign up form is ready",
+    "loginFormReady": "Login form is ready"
+  },
+  "inviteParent": {
+    "title": "Invite a parent",
+    "hint": "Add a second guardian to your account",
+    "email": "Parent's email",
+    "usernameHint": "Their name (optional)",
+    "submit": "Send invitation",
+    "sending": "Sending...",
+    "success": "Invitation sent to {{email}}!",
+    "successHint": "Ask your parent to check their email.",
+    "sendAnother": "Send another invitation"
+  },
+  "invite": {
+    "loading": "Loading invitation...",
+    "notFound": "This invitation is invalid or has expired.",
+    "title": "You've been invited!",
+    "subtitle": "{{name}} signed up on KiddoPath and listed you as their guardian.",
+    "invitedAs": "Invitation sent to: {{email}}",
+    "loginToAccept": "Log in to accept",
+    "accept": "Accept invitation",
+    "accepting": "Accepting...",
+    "successTitle": "All set!",
+    "successHint": "{{name}} can now log in to KiddoPath.",
+    "goToDashboard": "Go to your dashboard",
+    "wrongAccount": "You're logged in as {{email}}, but this invitation was sent to {{inviteEmail}}. Please log out and try again with the correct account."
   },
   "errors": {
     "required": "This field is required",
-    "invalidEmail": "Invalid email address"
+    "invalidEmail": "Invalid email address",
+    "boundary": {
+      "title": "Something went wrong",
+      "message": "Please try refreshing the page.",
+      "retry": "Try again"
+    },
+    "generic": "Something went wrong. Please try again.",
+    "apiUnknown": "Something went wrong. Please try again.",
+    "api": {
+      "invalidCredentials": "No account found with these credentials.",
+      "invalidKidCredentials": "No kid account found with these credentials.",
+      "kidNotActiveYet": "Your account is not active yet. Ask your parent to accept the invitation.",
+      "kidNotActive": "This kid account is not active.",
+      "emailExists": "An account with this email already exists.",
+      "usernameExists": "This username is already taken.",
+      "usernameTaken": "This username is already taken.",
+      "invitationNotFound": "This invitation is invalid or has expired.",
+      "invitationExpired": "This invitation has expired.",
+      "invitationEmailMismatch": "Your email does not match the invitation.",
+      "invitationNotPending": "This invitation is no longer pending.",
+      "accountInactive": "This account is inactive.",
+      "invalidRefreshToken": "Your session expired. Please log in again.",
+      "notKidRefreshToken": "Invalid session. Please log in again.",
+      "kidNotFound": "Account not found.",
+      "maxGuardians": "This child already has the maximum number of guardians.",
+      "tokenNotValid": "Your session is invalid. Please log in again.",
+      "googleNotConfigured": "Google sign-in is not available right now.",
+      "invalidGoogleToken": "Google sign-in failed. Please try again.",
+      "invalidGoogleIssuer": "Google sign-in failed. Please try again.",
+      "googleEmailNotVerified": "Please verify your Google email and try again.",
+      "googleNoEmail": "Google account has no email.",
+      "googleAccountConflict": "This email is linked to a different Google account."
+    }
   }
 }

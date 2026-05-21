@@ -1,19 +1,20 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
-interface User {
+export interface User {
   id: string
-  email: string
-  name: string
-  role: 'parent' | 'child'
+  username: string
+  email?: string      // parents have email, kids don't
+  role: 'parent' | 'kid'
 }
 
 interface AuthStore {
   currentUser: User | null
   token: string | null
+  refreshToken: string | null
   isAuthenticated: boolean
 
-  login: (user: User, token: string) => void
+  login: (user: User, token: string, refreshToken: string) => void
   logout: () => void
 }
 
@@ -22,17 +23,20 @@ const useAuthStore = create<AuthStore>()(
     (set) => ({
       currentUser: null,
       token: null,
+      refreshToken: null,
       isAuthenticated: false,
 
-      login: (user, token) => set({
+      login: (user, token, refreshToken) => set({
         currentUser: user,
         token,
+        refreshToken,
         isAuthenticated: true,
       }),
 
       logout: () => set({
         currentUser: null,
         token: null,
+        refreshToken: null,
         isAuthenticated: false,
       }),
     }),

@@ -4,7 +4,8 @@
   },
   "nav": {
     "login": "تسجيل الدخول",
-    "signup": "إنشاء حساب"
+    "signup": "إنشاء حساب",
+    "logout": "تسجيل الخروج"
   },
   "landing": {
     "tagline": "التعلم ممتع، مهمة تلو الأخرى."
@@ -12,6 +13,8 @@
   "auth": {
     "email": "البريد الإلكتروني",
     "emailHint": "you@example.com",
+    "emailOrUsername": "البريد الإلكتروني أو اسم المستخدم",
+    "emailOrUsernamHint": "you@example.com أو اسم المستخدم",
     "password": "كلمة المرور",
     "name": "الاسم الكامل",
     "login": "تسجيل الدخول",
@@ -26,7 +29,12 @@
     "parentEmail": "بريد ولي الأمر",
     "roleSelector": "أنا...",
     "noAccount": "ليس لديك حساب؟",
-    "hasAccount": "لديك حساب بالفعل؟"
+    "hasAccount": "لديك حساب بالفعل؟",
+    "loggingIn": "جارٍ تسجيل الدخول...",
+    "signingUp": "جارٍ إنشاء الحساب...",
+    "waitingForParent": "تحقق من بريد ولي الأمر!",
+    "waitingForParentHint": "أرسلنا دعوة إلى {{email}}. اطلب من ولي أمرك النقر على الرابط في البريد لتفعيل حسابك.",
+    "backToHome": "الذهاب إلى الرئيسية"
   },
   "dashboard": {
     "greeting": "مرحباً، {{name}}!",
@@ -43,10 +51,68 @@
     "switchLanguage": "التبديل إلى {{language}}",
     "goToSignup": "إنشاء حساب — تسجيل حساب جديد",
     "goToLogin": "تسجيل الدخول إلى حسابك",
-    "signupFormReady": "نموذج التسجيل جاهز"
+    "signupFormReady": "نموذج التسجيل جاهز",
+    "loginFormReady": "نموذج تسجيل الدخول جاهز"
+  },
+  "inviteParent": {
+    "title": "دعوة ولي أمر",
+    "hint": "أضف وليّ أمر ثانيًا إلى حسابك",
+    "email": "بريد ولي الأمر",
+    "usernameHint": "اسمه (اختياري)",
+    "submit": "إرسال الدعوة",
+    "sending": "جارٍ الإرسال...",
+    "success": "تم إرسال الدعوة إلى {{email}}!",
+    "successHint": "اطلب من ولي أمرك التحقق من بريده.",
+    "sendAnother": "إرسال دعوة أخرى"
+  },
+  "invite": {
+    "loading": "جارٍ تحميل الدعوة...",
+    "notFound": "هذه الدعوة غير صالحة أو انتهت صلاحيتها.",
+    "title": "لقد تمت دعوتك!",
+    "subtitle": "سجّل {{name}} في KiddoPath وأضافك كوليّ أمر.",
+    "invitedAs": "أُرسلت الدعوة إلى: {{email}}",
+    "loginToAccept": "سجّل دخولك للقبول",
+    "accept": "قبول الدعوة",
+    "accepting": "جارٍ القبول...",
+    "successTitle": "تمّ!",
+    "successHint": "يمكن لـ {{name}} الآن تسجيل الدخول إلى KiddoPath.",
+    "goToDashboard": "اذهب إلى لوحة التحكم",
+    "wrongAccount": "أنت مسجّل دخولك بـ {{email}}، لكن الدعوة أُرسلت إلى {{inviteEmail}}. يرجى تسجيل الخروج والمحاولة بالحساب الصحيح."
   },
   "errors": {
     "required": "هذا الحقل مطلوب",
-    "invalidEmail": "البريد الإلكتروني غير صالح"
+    "invalidEmail": "البريد الإلكتروني غير صالح",
+    "boundary": {
+      "title": "حدث خطأ",
+      "message": "يرجى تحديث الصفحة.",
+      "retry": "حاول مرة أخرى"
+    },
+    "generic": "حدث خطأ. يرجى المحاولة مرة أخرى.",
+    "apiUnknown": "حدث خطأ. يرجى المحاولة مرة أخرى.",
+    "api": {
+      "invalidCredentials": "لم يتم العثور على حساب بهذه البيانات.",
+      "invalidKidCredentials": "لم يتم العثور على حساب طفل بهذه البيانات.",
+      "kidNotActiveYet": "حسابك غير مفعّل بعد. اطلب من ولي أمرك قبول الدعوة.",
+      "kidNotActive": "حساب الطفل هذا غير مفعّل.",
+      "emailExists": "يوجد حساب بهذا البريد الإلكتروني بالفعل.",
+      "usernameExists": "اسم المستخدم هذا مستخدم بالفعل.",
+      "usernameTaken": "اسم المستخدم هذا مستخدم بالفعل.",
+      "invitationNotFound": "هذه الدعوة غير صالحة أو انتهت صلاحيتها.",
+      "invitationExpired": "انتهت صلاحية هذه الدعوة.",
+      "invitationEmailMismatch": "بريدك الإلكتروني لا يطابق الدعوة.",
+      "invitationNotPending": "هذه الدعوة لم تعد قيد الانتظار.",
+      "accountInactive": "هذا الحساب غير نشط.",
+      "invalidRefreshToken": "انتهت جلستك. يرجى تسجيل الدخول مرة أخرى.",
+      "notKidRefreshToken": "جلسة غير صالحة. يرجى تسجيل الدخول مرة أخرى.",
+      "kidNotFound": "الحساب غير موجود.",
+      "maxGuardians": "هذا الطفل لديه بالفعل الحد الأقصى من أولياء الأمور.",
+      "tokenNotValid": "جلستك غير صالحة. يرجى تسجيل الدخول مرة أخرى.",
+      "googleNotConfigured": "تسجيل الدخول عبر Google غير متاح حالياً.",
+      "invalidGoogleToken": "فشل تسجيل الدخول عبر Google. حاول مرة أخرى.",
+      "invalidGoogleIssuer": "فشل تسجيل الدخول عبر Google. حاول مرة أخرى.",
+      "googleEmailNotVerified": "يرجى التحقق من بريد Google والمحاولة مرة أخرى.",
+      "googleNoEmail": "حساب Google لا يحتوي على بريد إلكتروني.",
+      "googleAccountConflict": "هذا البريد مرتبط بحساب Google آخر."
+    }
   }
 }
