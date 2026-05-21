@@ -75,6 +75,17 @@ export async function acceptInvitation(token: string) {
   return res.data
 }
 
+// POST /auth/token/verify/  — check if the stored access token is still valid
+// Returns true if valid, false if expired or invalid
+export async function verifyToken(token: string): Promise<boolean> {
+  try {
+    await client.post('/auth/token/verify/', { token })
+    return true
+  } catch {
+    return false
+  }
+}
+
 // POST /kids/signup/  — kid registration
 // Kid can't log in until a parent accepts the email invitation
 export async function signupKid(

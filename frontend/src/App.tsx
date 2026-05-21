@@ -2,6 +2,8 @@ import { useEffect } from 'react'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { getLanguageBase, isRTLLanguage } from './i18n/config'
+import useAuthStore from './store/authStore'
+import { verifyToken } from './api/auth'
 
 import ProtectedRoute from './components/ProtectedRoute'
 import Landing from './pages/Landing'
@@ -19,6 +21,17 @@ export default function App() {
   const { i18n } = useTranslation()
   const activeLang = i18n.resolvedLanguage ?? i18n.language
   const isRTL = isRTLLanguage(activeLang)
+  const { token, logout } = useAuthStore()
+
+  // On startup — verify the stored token is still valid
+  // If not, log the user out so they don't see a broken logged-in state
+  useEffect(() => {
+    if (token) {
+      verifyToken(token).then(valid => {
+        if (!valid) logout()
+      })
+    }
+  }, [])
 
   useEffect(() => {
     document.documentElement.lang = getLanguageBase(activeLang)
