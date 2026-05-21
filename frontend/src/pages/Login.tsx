@@ -15,13 +15,12 @@ export default function Login() {
   const { t } = useTranslation()
   const login = useAuthStore(state => state.login)
 
+  const [role, setRole] = useState<'parent' | 'kid' | null>(null)
   const [identifier, setIdentifier] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const [isLoading, setIsLoading] = useState(false)
-
-  const isEmail = identifier.includes('@')
 
   function clearFieldError(field: string) {
     setFieldErrors(prev => {
@@ -32,54 +31,42 @@ export default function Login() {
     })
   }
 
+  function handleRoleChange(newRole: 'parent' | 'kid') {
+    setRole(newRole)
+    setIdentifier('')
+    setPassword('')
+    setError(null)
+    setFieldErrors({})
+  }
+
   function validate(): Record<string, string> {
     const errs: Record<string, string> = {}
     if (isEmpty(identifier)) errs.identifier = t('errors.required')
-    else if (isEmail && !isValidEmail(identifier)) errs.identifier = t('errors.invalidEmail')
+    else if (role === 'parent' && !isValidEmail(identifier)) errs.identifier = t('errors.invalidEmail')
     if (isEmpty(password)) errs.password = t('errors.required')
     return errs
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+    if (!role) return
     setError(null)
 
     const errs = validate()
-    if (Object.keys(errs).length > 0) {
-      setFieldErrors(errs)
-      return
-    }
+    if (Object.keys(errs).length > 0) { setFieldErrors(errs); return }
     setFieldErrors({})
-
     setIsLoading(true)
 
     try {
-      if (isEmail) {
+      if (role === 'parent') {
         const { access, refresh } = await loginParent(identifier, password)
         const payload = decodeJWT(access)
-        login(
-          {
-            id: payload.user_id as string,
-            username: payload.username as string,
-            email: payload.email as string,
-            role: 'parent',
-          },
-          access,
-          refresh,
-        )
+        login({ id: payload.user_id as string, username: payload.username as string, email: payload.email as string, role: 'parent' }, access, refresh)
         navigate('/parent/dashboard')
       } else {
         const { access, refresh } = await loginKid(identifier, password)
         const payload = decodeJWT(access)
-        login(
-          {
-            id: payload.kid_id as string,
-            username: payload.username as string,
-            role: 'kid',
-          },
-          access,
-          refresh,
-        )
+        login({ id: payload.kid_id as string, username: payload.username as string, role: 'kid' }, access, refresh)
         navigate('/dashboard')
       }
     } catch (err) {
@@ -95,87 +82,107 @@ export default function Login() {
         {t('auth.login')}
       </h1>
 
-      <form
-        noValidate
-        className="flex w-80 max-w-full flex-col gap-4"
-        onSubmit={handleSubmit}
-        aria-labelledby="login-heading"
-      >
-        {error && <FormAlert message={error} />}
+      {/* Role selector */}
+      <fieldset className="flex w-80 max-w-full flex-col items-center gap-4 border-0 p-0 m-0 min-w-0">
+        <p className="font-body text-sm font-semibold text-gray-700 text-center w-full m-0">
+          {t('auth.roleSelector')}
+        </p>
+        <div role="radiogroup" aria-required="true" className="flex gap-4">
+          <Button
+            role="radio"
+            variant={role === 'parent' ? 'primary' : 'secondary'}
+            onClick={() => handleRoleChange('parent')}
+            aria-checked={role === 'parent'}
+          >
+            {t('auth.parent')}
+          </Button>
+          <Button
+            role="radio"
+            variant={role === 'kid' ? 'primary' : 'secondary'}
+            onClick={() => handleRoleChange('kid')}
+            aria-checked={role === 'kid'}
+          >
+            {t('auth.child')}
+          </Button>
+        </div>
+      </fieldset>
 
-        <FormField
-          id="identifier"
-          label={t('auth.emailOrUsername')}
-          type="text"
-          value={identifier}
-          placeholder={t('auth.emailOrUsernamHint')}
-          required
-          autoComplete="username"
-          error={fieldErrors.identifier}
-          onChange={e => {
-            setIdentifier(e.target.value)
-            clearFieldError('identifier')
-          }}
-        />
+      {role !== null && (
+        <>
+          <form
+            noValidate
+            className="flex w-80 max-w-full flex-col gap-4"
+            onSubmit={handleSubmit}
+            aria-labelledby="login-heading"
+          >
+            {error && <FormAlert message={error} />}
 
-        <div className="flex flex-col gap-1">
-          <FormField
-            id="password"
-            label={t('auth.password')}
-            type="password"
-            value={password}
-            required
-            autoComplete="current-password"
-            error={fieldErrors.password}
-            onChange={e => {
-              setPassword(e.target.value)
-              clearFieldError('password')
-            }}
-          />
-          {isEmail && (
-            <Link
-              to="/forgot-password"
-              className="font-body text-sm text-primary-600 underline hover:text-primary-700 focus-ring rounded-sm self-end"
-            >
-              {t('auth.forgotPassword')}
-            </Link>
+            <FormField
+              id="identifier"
+              label={role === 'parent' ? t('auth.email') : t('auth.username')}
+              type={role === 'parent' ? 'email' : 'text'}
+              value={identifier}
+              placeholder={role === 'parent' ? t('auth.emailHint') : undefined}
+              required
+              autoComplete={role === 'parent' ? 'email' : 'username'}
+              error={fieldErrors.identifier}
+              onChange={e => { setIdentifier(e.target.value); clearFieldError('identifier') }}
+            />
+
+            <div className="flex flex-col gap-1">
+              <FormField
+                id="password"
+                label={t('auth.password')}
+                type="password"
+                value={password}
+                required
+                autoComplete="current-password"
+                error={fieldErrors.password}
+                onChange={e => { setPassword(e.target.value); clearFieldError('password') }}
+              />
+              {role === 'parent' && (
+                <Link
+                  to="/forgot-password"
+                  className="font-body text-sm text-primary-600 underline hover:text-primary-700 focus-ring rounded-sm self-end"
+                >
+                  {t('auth.forgotPassword')}
+                </Link>
+              )}
+            </div>
+
+            <Button variant="primary" type="submit" disabled={isLoading}>
+              {isLoading ? t('auth.loggingIn') : t('auth.login')}
+            </Button>
+          </form>
+
+          {/* Google sign-in — parents only */}
+          {role === 'parent' && (
+            <div className="flex flex-col items-center gap-3 w-80 max-w-full">
+              <div className="flex items-center gap-3 w-full">
+                <hr className="flex-1 border-gray-300" />
+                <span className="font-body text-xs text-gray-400">{t('auth.orContinueWith')}</span>
+                <hr className="flex-1 border-gray-300" />
+              </div>
+              <GoogleLogin
+                onSuccess={async credentialResponse => {
+                  if (!credentialResponse.credential) return
+                  setError(null)
+                  try {
+                    const { access, refresh } = await loginWithGoogle(credentialResponse.credential)
+                    const payload = decodeJWT(access)
+                    login({ id: payload.user_id as string, username: payload.username as string, email: payload.email as string, role: 'parent' }, access, refresh)
+                    navigate('/parent/dashboard')
+                  } catch (err) {
+                    setError(parseApiError(err))
+                  }
+                }}
+                onError={() => setError(t('errors.api.invalidGoogleToken'))}
+                width="320"
+              />
+            </div>
           )}
-        </div>
-
-        <Button variant="primary" type="submit" disabled={isLoading}>
-          {isLoading ? t('auth.loggingIn') : t('auth.login')}
-        </Button>
-      </form>
-
-      {/* Google sign-in — parents only */}
-      <div className="flex flex-col items-center gap-3 w-80 max-w-full">
-        <div className="flex items-center gap-3 w-full">
-          <hr className="flex-1 border-gray-300" />
-          <span className="font-body text-xs text-gray-400">{t('auth.orContinueWith')}</span>
-          <hr className="flex-1 border-gray-300" />
-        </div>
-        <GoogleLogin
-          onSuccess={async credentialResponse => {
-            if (!credentialResponse.credential) return
-            setError(null)
-            try {
-              const { access, refresh } = await loginWithGoogle(credentialResponse.credential)
-              const payload = decodeJWT(access)
-              login({
-                id: payload.user_id as string,
-                username: payload.username as string,
-                email: payload.email as string,
-                role: 'parent',
-              }, access, refresh)
-              navigate('/parent/dashboard')
-            } catch (err) {
-              setError(parseApiError(err))
-            }
-          }}
-          onError={() => setError(t('errors.api.invalidGoogleToken'))}
-          width="320"
-        />
-      </div>
+        </>
+      )}
 
       <p className="font-body text-sm text-gray-700 text-center">
         {t('auth.noAccount')}{' '}
