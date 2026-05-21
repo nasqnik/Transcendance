@@ -164,6 +164,7 @@ export default function Login() {
                 <hr className="flex-1 border-gray-300" />
               </div>
               <GoogleLogin
+                key={i18n.language}
                 onSuccess={async credentialResponse => {
                   if (!credentialResponse.credential) return
                   setError(null)
@@ -177,7 +178,7 @@ export default function Login() {
                   }
                 }}
                 onError={() => setError(t('errors.api.invalidGoogleToken'))}
-                locale={i18n.language}
+                locale={i18n.language.split('-')[0]}
                 width="320"
               />
             </div>
