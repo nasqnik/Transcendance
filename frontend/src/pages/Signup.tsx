@@ -3,9 +3,11 @@ import { useTranslation } from 'react-i18next'
 import { useEffect, useState } from 'react'
 import LanguageSwitcher from '../components/LanguageSwitcher'
 import Button from '../components/Button'
-import Input from '../components/Input'
+import FormAlert from '../components/FormAlert'
+import FormField from '../components/FormField'
 import useAuthStore from '../store/authStore'
 import { registerParent, loginParent, signupKid, decodeJWT, parseApiError, type KidSignupResponse } from '../api/auth'
+import { isEmpty, isValidEmail } from '../utils/validation'
 
 export default function Signup() {
   const navigate = useNavigate()
@@ -19,6 +21,7 @@ export default function Signup() {
   const [password, setPassword] = useState('')
   const [parentEmail, setParentEmail] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const [isLoading, setIsLoading] = useState(false)
 
   // After kid signup: show the "waiting for parent" screen
@@ -32,11 +35,44 @@ export default function Signup() {
     }
   }, [role])
 
+  function clearFieldError(field: string) {
+    setFieldErrors(prev => {
+      if (!prev[field]) return prev
+      const next = { ...prev }
+      delete next[field]
+      return next
+    })
+  }
+
+  function validate(): Record<string, string> {
+    const errs: Record<string, string> = {}
+    if (isEmpty(username)) errs.username = t('errors.required')
+    if (role === 'kid' && isEmpty(name)) errs.name = t('errors.required')
+    if (role === 'parent') {
+      if (isEmpty(email)) errs.email = t('errors.required')
+      else if (!isValidEmail(email)) errs.email = t('errors.invalidEmail')
+    }
+    if (isEmpty(password)) errs.password = t('errors.required')
+    if (role === 'kid') {
+      if (isEmpty(parentEmail)) errs.parentEmail = t('errors.required')
+      else if (!isValidEmail(parentEmail)) errs.parentEmail = t('errors.invalidEmail')
+    }
+    return errs
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!role) return
 
     setError(null)
+
+    const errs = validate()
+    if (Object.keys(errs).length > 0) {
+      setFieldErrors(errs)
+      return
+    }
+    setFieldErrors({})
+
     setIsLoading(true)
 
     try {
@@ -136,93 +172,89 @@ export default function Signup() {
             {t('a11y.signupFormReady')}
           </p>
           <form
+            noValidate
             className="flex w-80 max-w-full flex-col gap-4"
             onSubmit={handleSubmit}
             aria-labelledby="signup-heading"
           >
-            {/* Error message from the API */}
-            {error && (
-              <p role="alert" className="font-body text-sm text-red-600 text-center bg-red-50 rounded-xl px-4 py-3">
-                {error}
-              </p>
-            )}
+            {error && <FormAlert message={error} />}
 
-            <div className="flex flex-col gap-1">
-              <label htmlFor="username" className="font-body text-sm font-semibold text-gray-700">
-                {t('auth.username')}
-              </label>
-              <Input
-                id="username"
-                type="text"
-                value={username}
-                required
-                autoComplete="username"
-                onChange={e => setUsername(e.target.value)}
-              />
-            </div>
+            <FormField
+              id="username"
+              label={t('auth.username')}
+              type="text"
+              value={username}
+              required
+              autoComplete="username"
+              error={fieldErrors.username}
+              onChange={e => {
+                setUsername(e.target.value)
+                clearFieldError('username')
+              }}
+            />
 
             {role === 'kid' && (
-              <div className="flex flex-col gap-1">
-                <label htmlFor="name" className="font-body text-sm font-semibold text-gray-700">
-                  {t('auth.name')}
-                </label>
-                <Input
-                  id="name"
-                  type="text"
-                  value={name}
-                  required
-                  autoComplete="name"
-                  onChange={e => setName(e.target.value)}
-                />
-              </div>
+              <FormField
+                id="name"
+                label={t('auth.name')}
+                type="text"
+                value={name}
+                required
+                autoComplete="name"
+                error={fieldErrors.name}
+                onChange={e => {
+                  setName(e.target.value)
+                  clearFieldError('name')
+                }}
+              />
             )}
 
             {role === 'parent' && (
-              <div className="flex flex-col gap-1">
-                <label htmlFor="email" className="font-body text-sm font-semibold text-gray-700">
-                  {t('auth.email')}
-                </label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={email}
-                  placeholder={t('auth.emailHint')}
-                  required
-                  autoComplete="email"
-                  onChange={e => setEmail(e.target.value)}
-                />
-              </div>
+              <FormField
+                id="email"
+                label={t('auth.email')}
+                type="email"
+                value={email}
+                placeholder={t('auth.emailHint')}
+                required
+                autoComplete="email"
+                error={fieldErrors.email}
+                onChange={e => {
+                  setEmail(e.target.value)
+                  clearFieldError('email')
+                }}
+              />
             )}
 
-            <div className="flex flex-col gap-1">
-              <label htmlFor="password" className="font-body text-sm font-semibold text-gray-700">
-                {t('auth.password')}
-              </label>
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                required
-                autoComplete="new-password"
-                onChange={e => setPassword(e.target.value)}
-              />
-            </div>
+            <FormField
+              id="password"
+              label={t('auth.password')}
+              type="password"
+              value={password}
+              required
+              autoComplete="new-password"
+              error={fieldErrors.password}
+              onChange={e => {
+                setPassword(e.target.value)
+                clearFieldError('password')
+              }}
+            />
 
             {role === 'kid' && (
-              <div className="flex flex-col gap-1">
-                <label htmlFor="parentEmail" className="font-body text-sm font-semibold text-gray-700">
-                  {t('auth.parentEmail')}
-                </label>
-                <Input
-                  id="parentEmail"
-                  type="email"
-                  value={parentEmail}
-                  placeholder={t('auth.emailHint')}
-                  required
-                  autoComplete="off"
-                  onChange={e => setParentEmail(e.target.value)}
-                />
-              </div>
+              <FormField
+                id="parentEmail"
+                label={t('auth.parentEmail')}
+                type="email"
+                value={parentEmail}
+                placeholder={t('auth.emailHint')}
+                required
+                autoComplete="off"
+                error={fieldErrors.parentEmail}
+                onChange={e => {
+                  setParentEmail(e.target.value)
+                  clearFieldError('parentEmail')
+                }}
+              />
             )}
 
             <Button variant="primary" type="submit" disabled={isLoading}>

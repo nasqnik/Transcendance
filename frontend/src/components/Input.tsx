@@ -6,6 +6,8 @@ interface InputProps {
   placeholder?: string
   required?: boolean
   autoComplete?: string
+  error?: string
+  describedBy?: string
   onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void
 }
 
@@ -17,8 +19,12 @@ export default function Input({
   placeholder,
   required,
   autoComplete,
+  error,
+  describedBy,
   onChange,
 }: InputProps) {
+  const hasError = Boolean(error)
+
   return (
     <input
       id={id}
@@ -29,7 +35,11 @@ export default function Input({
       onChange={onChange}
       required={required}
       autoComplete={autoComplete}
-      className="font-body w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus-ring focus-visible:border-primary-500"
+      aria-invalid={hasError || undefined}
+      aria-describedby={describedBy}
+      className={`font-body w-full px-4 py-3 rounded-xl border-2 focus-ring focus-visible:border-primary-500 ${
+        hasError ? 'border-danger-500' : 'border-gray-200'
+      }`}
     />
   )
 }

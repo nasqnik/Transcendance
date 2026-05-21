@@ -70,6 +70,38 @@
   },
   "errors": {
     "required": "Это поле обязательно",
-    "invalidEmail": "Неверный адрес эл. почты"
+    "invalidEmail": "Неверный адрес эл. почты",
+    "boundary": {
+      "title": "Что-то пошло не так",
+      "message": "Обновите страницу.",
+      "retry": "Попробовать снова"
+    },
+    "generic": "Что-то пошло не так. Попробуйте ещё раз.",
+    "apiUnknown": "Что-то пошло не так. Попробуйте ещё раз.",
+    "api": {
+      "invalidCredentials": "Аккаунт с такими данными не найден.",
+      "invalidKidCredentials": "Детский аккаунт с такими данными не найден.",
+      "kidNotActiveYet": "Аккаунт ещё не активен. Попросите родителя принять приглашение.",
+      "kidNotActive": "Этот детский аккаунт не активен.",
+      "emailExists": "Аккаунт с таким email уже существует.",
+      "usernameExists": "Это имя пользователя уже занято.",
+      "usernameTaken": "Это имя пользователя уже занято.",
+      "invitationNotFound": "Приглашение недействительно или истекло.",
+      "invitationExpired": "Срок действия приглашения истёк.",
+      "invitationEmailMismatch": "Ваш email не совпадает с приглашением.",
+      "invitationNotPending": "Это приглашение больше не ожидает ответа.",
+      "accountInactive": "Этот аккаунт неактивен.",
+      "invalidRefreshToken": "Сессия истекла. Войдите снова.",
+      "notKidRefreshToken": "Недействительная сессия. Войдите снова.",
+      "kidNotFound": "Аккаунт не найден.",
+      "maxGuardians": "У этого ребёнка уже максимум опекунов.",
+      "tokenNotValid": "Сессия недействительна. Войдите снова.",
+      "googleNotConfigured": "Вход через Google сейчас недоступен.",
+      "invalidGoogleToken": "Не удалось войти через Google. Попробуйте снова.",
+      "invalidGoogleIssuer": "Не удалось войти через Google. Попробуйте снова.",
+      "googleEmailNotVerified": "Подтвердите email в Google и попробуйте снова.",
+      "googleNoEmail": "В аккаунте Google нет email.",
+      "googleAccountConflict": "Этот email привязан к другому аккаунту Google."
+    }
   }
 }

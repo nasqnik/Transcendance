@@ -15,34 +15,7 @@ export function decodeJWT(token: string): Record<string, unknown> {
   }
 }
 
-// ─── Error parsing ───────────────────────────────────────────────────────────
-
-// The backend returns errors in different shapes depending on the situation:
-//   { "detail": "No active account found..." }         ← general error
-//   { "email": ["user with this email already exists."] }  ← field error
-//   { "non_field_errors": ["..."] }                    ← cross-field error
-// This function turns all of those into one plain string.
-export function parseApiError(error: unknown): string {
-  if (!error || typeof error !== 'object') return 'Something went wrong'
-
-  const err = error as { response?: { data?: unknown } }
-  const data = err.response?.data
-
-  if (!data || typeof data !== 'object') return 'Something went wrong'
-
-  const obj = data as Record<string, unknown>
-
-  // { "detail": "..." }
-  if (typeof obj.detail === 'string') return obj.detail
-
-  // { "field": ["error message", ...], "non_field_errors": [...] }
-  for (const value of Object.values(obj)) {
-    if (Array.isArray(value) && typeof value[0] === 'string') return value[0]
-    if (typeof value === 'string') return value
-  }
-
-  return 'Something went wrong'
-}
+export { parseApiError } from './errors'
 
 // ─── API response types ──────────────────────────────────────────────────────
 

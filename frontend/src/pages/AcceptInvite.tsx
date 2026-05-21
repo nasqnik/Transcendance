@@ -2,8 +2,10 @@ import { useEffect, useState } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import Button from '../components/Button'
-import Input from '../components/Input'
+import FormAlert from '../components/FormAlert'
+import FormField from '../components/FormField'
 import LanguageSwitcher from '../components/LanguageSwitcher'
+import { isEmpty, isValidEmail } from '../utils/validation'
 import useAuthStore from '../store/authStore'
 import {
   getInvitation,
@@ -35,7 +37,7 @@ export default function AcceptInvite() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
-  const { isAuthenticated, currentUser, token: authToken, login } = useAuthStore()
+  const { isAuthenticated, currentUser, login } = useAuthStore()
 
   const [state, setState] = useState<PageState>({ status: 'loading' })
 
@@ -43,6 +45,7 @@ export default function AcceptInvite() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [formError, setFormError] = useState<string | null>(null)
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const inviteToken = searchParams.get('token')
@@ -88,12 +91,37 @@ export default function AcceptInvite() {
     }
   }
 
+  function clearFieldError(field: string) {
+    setFieldErrors(prev => {
+      if (!prev[field]) return prev
+      const next = { ...prev }
+      delete next[field]
+      return next
+    })
+  }
+
+  function validateLoginForm(): Record<string, string> {
+    const errs: Record<string, string> = {}
+    if (isEmpty(email)) errs.email = t('errors.required')
+    else if (!isValidEmail(email)) errs.email = t('errors.invalidEmail')
+    if (isEmpty(password)) errs.password = t('errors.required')
+    return errs
+  }
+
   // ── Step 3: login form submit ─────────────────────────────────────────────
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault()
     if (state.status !== 'login') return
 
     setFormError(null)
+
+    const errs = validateLoginForm()
+    if (Object.keys(errs).length > 0) {
+      setFieldErrors(errs)
+      return
+    }
+    setFieldErrors({})
+
     setIsSubmitting(true)
 
     try {
@@ -170,42 +198,39 @@ export default function AcceptInvite() {
           </p>
 
           <form
+            noValidate
             className="flex w-80 max-w-full flex-col gap-4"
             onSubmit={handleLogin}
             aria-labelledby="invite-heading"
           >
-            {formError && (
-              <p role="alert" className="font-body text-sm text-red-600 text-center bg-red-50 rounded-xl px-4 py-3">
-                {formError}
-              </p>
-            )}
-            <div className="flex flex-col gap-1">
-              <label htmlFor="email" className="font-body text-sm font-semibold text-gray-700">
-                {t('auth.email')}
-              </label>
-              <Input
-                id="email"
-                type="email"
-                value={email}
-                placeholder={t('auth.emailHint')}
-                required
-                autoComplete="email"
-                onChange={e => setEmail(e.target.value)}
-              />
-            </div>
-            <div className="flex flex-col gap-1">
-              <label htmlFor="password" className="font-body text-sm font-semibold text-gray-700">
-                {t('auth.password')}
-              </label>
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                required
-                autoComplete="current-password"
-                onChange={e => setPassword(e.target.value)}
-              />
-            </div>
+            {formError && <FormAlert message={formError} />}
+            <FormField
+              id="email"
+              label={t('auth.email')}
+              type="email"
+              value={email}
+              placeholder={t('auth.emailHint')}
+              required
+              autoComplete="email"
+              error={fieldErrors.email}
+              onChange={e => {
+                setEmail(e.target.value)
+                clearFieldError('email')
+              }}
+            />
+            <FormField
+              id="password"
+              label={t('auth.password')}
+              type="password"
+              value={password}
+              required
+              autoComplete="current-password"
+              error={fieldErrors.password}
+              onChange={e => {
+                setPassword(e.target.value)
+                clearFieldError('password')
+              }}
+            />
             <Button variant="primary" type="submit" disabled={isSubmitting}>
               {isSubmitting ? t('invite.accepting') : t('invite.accept')}
             </Button>

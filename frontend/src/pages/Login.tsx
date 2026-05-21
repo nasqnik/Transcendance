@@ -3,9 +3,11 @@ import { useTranslation } from 'react-i18next'
 import { useState } from 'react'
 import LanguageSwitcher from '../components/LanguageSwitcher'
 import Button from '../components/Button'
-import Input from '../components/Input'
+import FormAlert from '../components/FormAlert'
+import FormField from '../components/FormField'
 import useAuthStore from '../store/authStore'
 import { loginParent, loginKid, decodeJWT, parseApiError } from '../api/auth'
+import { isEmpty, isValidEmail } from '../utils/validation'
 
 export default function Login() {
   const navigate = useNavigate()
@@ -15,15 +17,39 @@ export default function Login() {
   const [identifier, setIdentifier] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const [isLoading, setIsLoading] = useState(false)
 
-  // If the input contains @ we treat it as an email → parent login
-  // Otherwise it's a username → kid login
   const isEmail = identifier.includes('@')
+
+  function clearFieldError(field: string) {
+    setFieldErrors(prev => {
+      if (!prev[field]) return prev
+      const next = { ...prev }
+      delete next[field]
+      return next
+    })
+  }
+
+  function validate(): Record<string, string> {
+    const errs: Record<string, string> = {}
+    if (isEmpty(identifier)) errs.identifier = t('errors.required')
+    else if (isEmail && !isValidEmail(identifier)) errs.identifier = t('errors.invalidEmail')
+    if (isEmpty(password)) errs.password = t('errors.required')
+    return errs
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
+
+    const errs = validate()
+    if (Object.keys(errs).length > 0) {
+      setFieldErrors(errs)
+      return
+    }
+    setFieldErrors({})
+
     setIsLoading(true)
 
     try {
@@ -69,42 +95,41 @@ export default function Login() {
       </h1>
 
       <form
+        noValidate
         className="flex w-80 max-w-full flex-col gap-4"
         onSubmit={handleSubmit}
         aria-labelledby="login-heading"
       >
-        {error && (
-          <p role="alert" className="font-body text-sm text-red-600 text-center bg-red-50 rounded-xl px-4 py-3">
-            {error}
-          </p>
-        )}
+        {error && <FormAlert message={error} />}
+
+        <FormField
+          id="identifier"
+          label={t('auth.emailOrUsername')}
+          type="text"
+          value={identifier}
+          placeholder={t('auth.emailOrUsernamHint')}
+          required
+          autoComplete="username"
+          error={fieldErrors.identifier}
+          onChange={e => {
+            setIdentifier(e.target.value)
+            clearFieldError('identifier')
+          }}
+        />
 
         <div className="flex flex-col gap-1">
-          <label htmlFor="identifier" className="font-body text-sm font-semibold text-gray-700">
-            {t('auth.emailOrUsername')}
-          </label>
-          <Input
-            id="identifier"
-            type="text"
-            value={identifier}
-            placeholder={t('auth.emailOrUsernamHint')}
-            required
-            autoComplete="username"
-            onChange={e => setIdentifier(e.target.value)}
-          />
-        </div>
-
-        <div className="flex flex-col gap-1">
-          <label htmlFor="password" className="font-body text-sm font-semibold text-gray-700">
-            {t('auth.password')}
-          </label>
-          <Input
+          <FormField
             id="password"
+            label={t('auth.password')}
             type="password"
             value={password}
             required
             autoComplete="current-password"
-            onChange={e => setPassword(e.target.value)}
+            error={fieldErrors.password}
+            onChange={e => {
+              setPassword(e.target.value)
+              clearFieldError('password')
+            }}
           />
           {isEmail && (
             <Link

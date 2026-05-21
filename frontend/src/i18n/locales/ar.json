@@ -70,6 +70,38 @@
   },
   "errors": {
     "required": "هذا الحقل مطلوب",
-    "invalidEmail": "البريد الإلكتروني غير صالح"
+    "invalidEmail": "البريد الإلكتروني غير صالح",
+    "boundary": {
+      "title": "حدث خطأ",
+      "message": "يرجى تحديث الصفحة.",
+      "retry": "حاول مرة أخرى"
+    },
+    "generic": "حدث خطأ. يرجى المحاولة مرة أخرى.",
+    "apiUnknown": "حدث خطأ. يرجى المحاولة مرة أخرى.",
+    "api": {
+      "invalidCredentials": "لم يتم العثور على حساب بهذه البيانات.",
+      "invalidKidCredentials": "لم يتم العثور على حساب طفل بهذه البيانات.",
+      "kidNotActiveYet": "حسابك غير مفعّل بعد. اطلب من ولي أمرك قبول الدعوة.",
+      "kidNotActive": "حساب الطفل هذا غير مفعّل.",
+      "emailExists": "يوجد حساب بهذا البريد الإلكتروني بالفعل.",
+      "usernameExists": "اسم المستخدم هذا مستخدم بالفعل.",
+      "usernameTaken": "اسم المستخدم هذا مستخدم بالفعل.",
+      "invitationNotFound": "هذه الدعوة غير صالحة أو انتهت صلاحيتها.",
+      "invitationExpired": "انتهت صلاحية هذه الدعوة.",
+      "invitationEmailMismatch": "بريدك الإلكتروني لا يطابق الدعوة.",
+      "invitationNotPending": "هذه الدعوة لم تعد قيد الانتظار.",
+      "accountInactive": "هذا الحساب غير نشط.",
+      "invalidRefreshToken": "انتهت جلستك. يرجى تسجيل الدخول مرة أخرى.",
+      "notKidRefreshToken": "جلسة غير صالحة. يرجى تسجيل الدخول مرة أخرى.",
+      "kidNotFound": "الحساب غير موجود.",
+      "maxGuardians": "هذا الطفل لديه بالفعل الحد الأقصى من أولياء الأمور.",
+      "tokenNotValid": "جلستك غير صالحة. يرجى تسجيل الدخول مرة أخرى.",
+      "googleNotConfigured": "تسجيل الدخول عبر Google غير متاح حالياً.",
+      "invalidGoogleToken": "فشل تسجيل الدخول عبر Google. حاول مرة أخرى.",
+      "invalidGoogleIssuer": "فشل تسجيل الدخول عبر Google. حاول مرة أخرى.",
+      "googleEmailNotVerified": "يرجى التحقق من بريد Google والمحاولة مرة أخرى.",
+      "googleNoEmail": "حساب Google لا يحتوي على بريد إلكتروني.",
+      "googleAccountConflict": "هذا البريد مرتبط بحساب Google آخر."
+    }
   }
 }

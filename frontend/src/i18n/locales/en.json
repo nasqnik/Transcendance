@@ -70,6 +70,38 @@
   },
   "errors": {
     "required": "This field is required",
-    "invalidEmail": "Invalid email address"
+    "invalidEmail": "Invalid email address",
+    "boundary": {
+      "title": "Something went wrong",
+      "message": "Please try refreshing the page.",
+      "retry": "Try again"
+    },
+    "generic": "Something went wrong. Please try again.",
+    "apiUnknown": "Something went wrong. Please try again.",
+    "api": {
+      "invalidCredentials": "No account found with these credentials.",
+      "invalidKidCredentials": "No kid account found with these credentials.",
+      "kidNotActiveYet": "Your account is not active yet. Ask your parent to accept the invitation.",
+      "kidNotActive": "This kid account is not active.",
+      "emailExists": "An account with this email already exists.",
+      "usernameExists": "This username is already taken.",
+      "usernameTaken": "This username is already taken.",
+      "invitationNotFound": "This invitation is invalid or has expired.",
+      "invitationExpired": "This invitation has expired.",
+      "invitationEmailMismatch": "Your email does not match the invitation.",
+      "invitationNotPending": "This invitation is no longer pending.",
+      "accountInactive": "This account is inactive.",
+      "invalidRefreshToken": "Your session expired. Please log in again.",
+      "notKidRefreshToken": "Invalid session. Please log in again.",
+      "kidNotFound": "Account not found.",
+      "maxGuardians": "This child already has the maximum number of guardians.",
+      "tokenNotValid": "Your session is invalid. Please log in again.",
+      "googleNotConfigured": "Google sign-in is not available right now.",
+      "invalidGoogleToken": "Google sign-in failed. Please try again.",
+      "invalidGoogleIssuer": "Google sign-in failed. Please try again.",
+      "googleEmailNotVerified": "Please verify your Google email and try again.",
+      "googleNoEmail": "Google account has no email.",
+      "googleAccountConflict": "This email is linked to a different Google account."
+    }
   }
 }
