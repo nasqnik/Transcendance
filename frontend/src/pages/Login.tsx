@@ -1,12 +1,13 @@
 import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useState } from 'react'
+import { GoogleLogin } from '@react-oauth/google'
 import LanguageSwitcher from '../components/LanguageSwitcher'
 import Button from '../components/Button'
 import FormAlert from '../components/FormAlert'
 import FormField from '../components/FormField'
 import useAuthStore from '../store/authStore'
-import { loginParent, loginKid, decodeJWT, parseApiError } from '../api/auth'
+import { loginParent, loginKid, loginWithGoogle, decodeJWT, parseApiError } from '../api/auth'
 import { isEmpty, isValidEmail } from '../utils/validation'
 
 export default function Login() {
@@ -145,6 +146,36 @@ export default function Login() {
           {isLoading ? t('auth.loggingIn') : t('auth.login')}
         </Button>
       </form>
+
+      {/* Google sign-in — parents only */}
+      <div className="flex flex-col items-center gap-3 w-80 max-w-full">
+        <div className="flex items-center gap-3 w-full">
+          <hr className="flex-1 border-gray-300" />
+          <span className="font-body text-xs text-gray-400">{t('auth.orContinueWith')}</span>
+          <hr className="flex-1 border-gray-300" />
+        </div>
+        <GoogleLogin
+          onSuccess={async credentialResponse => {
+            if (!credentialResponse.credential) return
+            setError(null)
+            try {
+              const { access, refresh } = await loginWithGoogle(credentialResponse.credential)
+              const payload = decodeJWT(access)
+              login({
+                id: payload.user_id as string,
+                username: payload.username as string,
+                email: payload.email as string,
+                role: 'parent',
+              }, access, refresh)
+              navigate('/parent/dashboard')
+            } catch (err) {
+              setError(parseApiError(err))
+            }
+          }}
+          onError={() => setError(t('errors.api.invalidGoogleToken'))}
+          width="320"
+        />
+      </div>
 
       <p className="font-body text-sm text-gray-700 text-center">
         {t('auth.noAccount')}{' '}

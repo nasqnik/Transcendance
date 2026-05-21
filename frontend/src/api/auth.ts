@@ -59,6 +59,7 @@ export interface InvitationDetails {
   status: 'pending' | 'accepted' | 'declined' | 'expired' | 'revoked'
   role: 'primary' | 'secondary'
   invite_email: string
+  invited_username_hint: string
   expires_at: string
   kid_name: string
   kid_id: string
@@ -92,6 +93,13 @@ export async function inviteParent(parent_email: string, invited_username_hint?:
     parent_email,
     ...(invited_username_hint ? { invited_username_hint } : {}),
   })
+  return res.data
+}
+
+// POST /auth/google/  — parent sign-in / sign-up via Google Identity Services
+// Send the id_token Google gives us; backend verifies it and returns JWT tokens
+export async function loginWithGoogle(idToken: string): Promise<TokenResponse> {
+  const res = await client.post<TokenResponse>('/auth/google/', { id_token: idToken })
   return res.data
 }
 
