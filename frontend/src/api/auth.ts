@@ -105,9 +105,14 @@ export async function inviteParent(parent_email: string, invited_username_hint?:
 }
 
 // POST /auth/google/  — parent sign-in / sign-up via Google Identity Services
-// Send the id_token Google gives us; backend verifies it and returns JWT tokens
 export async function loginWithGoogle(idToken: string): Promise<TokenResponse> {
   const res = await client.post<TokenResponse>('/auth/google/', { id_token: idToken })
+  return res.data
+}
+
+// POST /auth/kid/google/  — kid sign-in via Google (kid must be active)
+export async function loginKidWithGoogle(idToken: string): Promise<TokenResponse> {
+  const res = await client.post<TokenResponse>('/auth/kid/google/', { id_token: idToken })
   return res.data
 }
 
