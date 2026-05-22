@@ -39,9 +39,16 @@ from .services import (
 )
 from .tokens import KidRefreshToken
 
+LOGIN_IDENTIFIER_FIELD = "emailOrUsername"
+
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     """Include stable parent-facing claims on the access token."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields.pop(self.username_field, None)
+        self.fields[LOGIN_IDENTIFIER_FIELD] = serializers.CharField()
 
     @classmethod
     def get_token(cls, user):
@@ -52,7 +59,7 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         return token
 
     def validate(self, attrs):
-        identifier = attrs[self.username_field]
+        identifier = attrs[LOGIN_IDENTIFIER_FIELD]
         password = attrs["password"]
 
         user = CustomUser.objects.filter(email__iexact=identifier).first()
@@ -253,18 +260,18 @@ class AcceptGuardianInviteSerializer(serializers.Serializer):
 
 
 class KidTokenObtainSerializer(serializers.Serializer):
-    username = serializers.CharField()
+    emailOrUsername = serializers.CharField()
     password = serializers.CharField(write_only=True)
 
     def validate(self, attrs):
-        try:
-            kid = Kid.objects.get(username__iexact=attrs["username"])
-        except Kid.DoesNotExist as exc:
-            raise AuthenticationFailed(
-                "No active kid account found with the given credentials."
-            ) from exc
+        identifier = attrs[LOGIN_IDENTIFIER_FIELD]
+        password = attrs["password"]
 
-        if not kid.check_password(attrs["password"]):
+        kid = Kid.objects.filter(username__iexact=identifier).first()
+        if kid is None:
+            kid = Kid.objects.filter(email__iexact=identifier).first()
+
+        if kid is None or not kid.check_password(password):
             raise AuthenticationFailed(
                 "No active kid account found with the given credentials."
             )
