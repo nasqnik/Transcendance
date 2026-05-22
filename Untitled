@@ -1,1 +1,0 @@
-docker compose restart nginx backend frontend

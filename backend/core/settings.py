@@ -157,6 +157,15 @@ DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'noreply@localhost')
 SERVER_EMAIL = os.getenv('SERVER_EMAIL', DEFAULT_FROM_EMAIL)
 APP_NAME = os.getenv('APP_NAME', 'KiddoPath')
 FRONTEND_URL = os.getenv('FRONTEND_URL', 'https://localhost')
+CSRF_TRUSTED_ORIGINS = [
+    origin.strip()
+    for origin in os.getenv(
+        'CSRF_TRUSTED_ORIGINS',
+        f'{FRONTEND_URL},http://localhost:8000',
+    ).split(',')
+    if origin.strip()
+]
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 GOOGLE_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID', '')
 GUARDIAN_INVITE_EXPIRY_DAYS = int(os.getenv('GUARDIAN_INVITE_EXPIRY_DAYS', '7'))
 MAX_GUARDIANS_PER_KID = int(os.getenv('MAX_GUARDIANS_PER_KID', '2'))

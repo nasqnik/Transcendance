@@ -91,15 +91,30 @@ class ParentRegisterTests(APITestCase):
 
         login = self.client.post(
             "/api/auth/token/",
-            {"email": "parent@example.com", "password": "secure-pass-1"},
+            {"emailOrUsername": "parent@example.com", "password": "secure-pass-1"},
             format="json",
         )
         self.assertEqual(login.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertEqual(
+            login.data["detail"],
+            "Please verify your email before logging in.",
+        )
+
+        login_with_username = self.client.post(
+            "/api/auth/token/",
+            {"emailOrUsername": "parent_one", "password": "secure-pass-1"},
+            format="json",
+        )
+        self.assertEqual(login_with_username.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertEqual(
+            login_with_username.data["detail"],
+            "Please verify your email before logging in.",
+        )
 
         _verify_parent(self.client, "parent@example.com")
         login = self.client.post(
             "/api/auth/token/",
-            {"email": "parent@example.com", "password": "secure-pass-1"},
+            {"emailOrUsername": "parent@example.com", "password": "secure-pass-1"},
             format="json",
         )
         self.assertEqual(login.status_code, status.HTTP_200_OK)
@@ -146,7 +161,7 @@ class AcceptGuardianInviteTests(APITestCase):
         _verify_parent(self.client, "parent@example.com")
         login = self.client.post(
             "/api/auth/token/",
-            {"email": "parent@example.com", "password": "secure-pass-1"},
+            {"emailOrUsername": "parent@example.com", "password": "secure-pass-1"},
             format="json",
         )
         self.client.credentials(
@@ -175,7 +190,7 @@ class AcceptGuardianInviteTests(APITestCase):
         _verify_parent(self.client, "other@example.com")
         login = self.client.post(
             "/api/auth/token/",
-            {"email": "other@example.com", "password": "secure-pass-1"},
+            {"emailOrUsername": "other@example.com", "password": "secure-pass-1"},
             format="json",
         )
         self.client.credentials(
@@ -223,7 +238,7 @@ class KidAuthAndSecondParentInviteTests(APITestCase):
         _verify_parent(self.client, "parent@example.com")
         login = self.client.post(
             "/api/auth/token/",
-            {"email": "parent@example.com", "password": "secure-pass-1"},
+            {"emailOrUsername": "parent@example.com", "password": "secure-pass-1"},
             format="json",
         )
         self.client.credentials(
@@ -241,10 +256,17 @@ class KidAuthAndSecondParentInviteTests(APITestCase):
         self._signup_and_accept_primary()
         response = self.client.post(
             "/api/auth/kid/token/",
-            {"username": "alex_kid2", "password": "secure-pass-1"},
+            {"emailOrUsername": "alex_kid2", "password": "secure-pass-1"},
             format="json",
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        response_with_email = self.client.post(
+            "/api/auth/kid/token/",
+            {"emailOrUsername": "alex2@example.com", "password": "secure-pass-1"},
+            format="json",
+        )
+        self.assertEqual(response_with_email.status_code, status.HTTP_200_OK)
 
     def test_kid_cannot_login_before_email_verified(self):
         self.client.post(
@@ -263,10 +285,21 @@ class KidAuthAndSecondParentInviteTests(APITestCase):
         )
         response = self.client.post(
             "/api/auth/kid/token/",
-            {"username": "sam_kid", "password": "secure-pass-1"},
+            {"emailOrUsername": "sam_kid", "password": "secure-pass-1"},
             format="json",
         )
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+        response_with_email = self.client.post(
+            "/api/auth/kid/token/",
+            {"emailOrUsername": "sam@example.com", "password": "secure-pass-1"},
+            format="json",
+        )
+        self.assertEqual(response_with_email.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertEqual(
+            response_with_email.data["detail"],
+            "Verify your email first.",
+        )
 
     def test_kid_cannot_login_before_active(self):
         self.client.post(
@@ -283,7 +316,7 @@ class KidAuthAndSecondParentInviteTests(APITestCase):
         _verify_kid(self.client, "sam_kid2")
         response = self.client.post(
             "/api/auth/kid/token/",
-            {"username": "sam_kid2", "password": "secure-pass-1"},
+            {"emailOrUsername": "sam_kid2", "password": "secure-pass-1"},
             format="json",
         )
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
@@ -292,7 +325,7 @@ class KidAuthAndSecondParentInviteTests(APITestCase):
         self._signup_and_accept_primary()
         kid_login = self.client.post(
             "/api/auth/kid/token/",
-            {"username": "alex_kid2", "password": "secure-pass-1"},
+            {"emailOrUsername": "alex_kid2", "password": "secure-pass-1"},
             format="json",
         )
         self.client.credentials(

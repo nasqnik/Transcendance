@@ -4,6 +4,7 @@ from django.db import transaction
 from rest_framework import serializers
 from rest_framework.exceptions import AuthenticationFailed
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+from rest_framework_simplejwt.settings import api_settings
 
 from .google_auth import GoogleAuthError, verify_google_id_token
 from .google_kids import (
@@ -38,9 +39,16 @@ from .services import (
 )
 from .tokens import KidRefreshToken
 
+LOGIN_IDENTIFIER_FIELD = "emailOrUsername"
+
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     """Include stable parent-facing claims on the access token."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields.pop(self.username_field, None)
+        self.fields[LOGIN_IDENTIFIER_FIELD] = serializers.CharField()
 
     @classmethod
     def get_token(cls, user):
@@ -51,10 +59,34 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         return token
 
     def validate(self, attrs):
-        data = super().validate(attrs)
-        if not self.user.email_verified:
-            raise AuthenticationFailed("Email not verified.")
-        return data
+        identifier = attrs[LOGIN_IDENTIFIER_FIELD]
+        password = attrs["password"]
+
+        user = CustomUser.objects.filter(email__iexact=identifier).first()
+        if user is None:
+            user = CustomUser.objects.filter(username__iexact=identifier).first()
+
+        if user is None or not user.check_password(password):
+            raise AuthenticationFailed(
+                "No active account found with the given credentials."
+            )
+
+        if not api_settings.USER_AUTHENTICATION_RULE(user):
+            raise AuthenticationFailed(
+                "No active account found with the given credentials."
+            )
+
+        if not user.email_verified:
+            raise AuthenticationFailed(
+                "Please verify your email before logging in."
+            )
+
+        self.user = user
+        refresh = self.get_token(user)
+        return {
+            "refresh": str(refresh),
+            "access": str(refresh.access_token),
+        }
 
 
 class KidSignupSerializer(serializers.Serializer):
@@ -228,18 +260,18 @@ class AcceptGuardianInviteSerializer(serializers.Serializer):
 
 
 class KidTokenObtainSerializer(serializers.Serializer):
-    username = serializers.CharField()
+    emailOrUsername = serializers.CharField()
     password = serializers.CharField(write_only=True)
 
     def validate(self, attrs):
-        try:
-            kid = Kid.objects.get(username__iexact=attrs["username"])
-        except Kid.DoesNotExist as exc:
-            raise AuthenticationFailed(
-                "No active kid account found with the given credentials."
-            ) from exc
+        identifier = attrs[LOGIN_IDENTIFIER_FIELD]
+        password = attrs["password"]
 
-        if not kid.check_password(attrs["password"]):
+        kid = Kid.objects.filter(username__iexact=identifier).first()
+        if kid is None:
+            kid = Kid.objects.filter(email__iexact=identifier).first()
+
+        if kid is None or not kid.check_password(password):
             raise AuthenticationFailed(
                 "No active kid account found with the given credentials."
             )

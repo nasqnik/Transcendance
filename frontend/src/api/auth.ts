@@ -34,15 +34,21 @@ export interface KidSignupResponse {
 
 // ─── Auth endpoints ──────────────────────────────────────────────────────────
 
-// POST /auth/token/  — parent login with email + password
-export async function loginParent(email: string, password: string): Promise<TokenResponse> {
-  const res = await client.post<TokenResponse>('/auth/token/', { email, password })
+// POST /auth/token/  — parent login with emailOrUsername + password
+export async function loginParent(identifier: string, password: string): Promise<TokenResponse> {
+  const res = await client.post<TokenResponse>('/auth/token/', {
+    emailOrUsername: identifier,
+    password,
+  })
   return res.data
 }
 
-// POST /auth/kid/token/  — kid login with username + password
-export async function loginKid(username: string, password: string): Promise<TokenResponse> {
-  const res = await client.post<TokenResponse>('/auth/kid/token/', { username, password })
+// POST /auth/kid/token/  — kid login with emailOrUsername + password
+export async function loginKid(identifier: string, password: string): Promise<TokenResponse> {
+  const res = await client.post<TokenResponse>('/auth/kid/token/', {
+    emailOrUsername: identifier,
+    password,
+  })
   return res.data
 }
 

@@ -295,10 +295,12 @@ Creates kid with `email_verified=true` (Google). Sends guardian invite only (no 
 
 ```json
 {
-  "email": "parent@example.com",
+  "emailOrUsername": "parent@example.com",
   "password": "secure-pass-1"
 }
 ```
+
+`emailOrUsername` accepts the parent's **email** or **username**.
 
 **Success `200`:**
 
@@ -317,7 +319,7 @@ Creates kid with `email_verified=true` (Google). Sends guardian invite only (no 
 }
 ```
 
-Or `"Email not verified."` if password is correct but account not verified.
+Or `"Please verify your email before logging in."` if password is correct but account not verified.
 
 ---
 
@@ -423,10 +425,12 @@ For **`role: "secondary"`**, kid was already active; response shape is the same 
 
 ```json
 {
-  "username": "alex_kid",
+  "emailOrUsername": "alex_kid",
   "password": "secure-pass-1"
 }
 ```
+
+`emailOrUsername` accepts the kid's **username** or **email**.
 
 **Success `200`:**
 
@@ -701,11 +705,11 @@ async function acceptInvite(accessToken, inviteToken) {
 ```
 
 ```javascript
-async function parentLogin(email, password) {
+async function parentLogin(emailOrUsername, password) {
   const res = await fetch(`${API}/auth/token/`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, password }),
+    body: JSON.stringify({ emailOrUsername, password }),
   });
   if (!res.ok) throw await res.json();
   return res.json(); // { access, refresh }

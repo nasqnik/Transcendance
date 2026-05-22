@@ -18,12 +18,12 @@ docker compose build backend && docker compose up -d backend
 docker compose exec backend python manage.py check
 ```
 
-Endpoints (JSON uses **`email`** + **`password`** because `USERNAME_FIELD = email`). Use your real superuser values — not placeholders like `<superuser-email>`.
+Endpoints (JSON uses **`emailOrUsername`** + **`password`** — email or username for parent login). Use your real superuser values — not placeholders like `<superuser-email>`.
 
 - Direct backend (compose maps **port 8000**): `POST http://localhost:8000/api/auth/token/`
 - Behind nginx (**HTTPS**): `POST https://localhost/api/auth/token/` — add **`curl -k`** for the self-signed cert in dev.
 
-- Obtain: `{"email":"you@example.com","password":"your-password"}` → `access` + `refresh`
+- Obtain: `{"emailOrUsername":"you@example.com","password":"your-password"}` → `access` + `refresh`
 - Refresh: `{"refresh":"<refresh-token>"}`
 - Verify: `{"token":"<access-token>"}`
 
@@ -32,13 +32,13 @@ If **`curl`** prints nothing, **`curl -s` hides errors** (e.g. connection refuse
 ```bash
 curl -sS http://localhost:8000/api/auth/token/ \
   -H 'Content-Type: application/json' \
-  -d '{"email":"you@example.com","password":"your-real-password"}'
+  -d '{"emailOrUsername":"you@example.com","password":"your-real-password"}'
 ```
 
 ```bash
 curl -sSk https://localhost/api/auth/token/ \
   -H 'Content-Type: application/json' \
-  -d '{"email":"you@example.com","password":"your-real-password"}'
+  -d '{"emailOrUsername":"you@example.com","password":"your-real-password"}'
 ```
 
 ### If logs show `ModuleNotFoundError: No module named 'rest_framework'`
@@ -51,3 +51,4 @@ Quick one-off install inside the running container (lost on next recreate unless
 docker compose exec backend pip install --no-cache-dir -r requirements.txt
 docker compose restart backend
 ```
+python manage.py createsuperuser
