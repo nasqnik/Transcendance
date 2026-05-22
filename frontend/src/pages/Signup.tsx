@@ -7,7 +7,15 @@ import Button from '../components/Button'
 import FormAlert from '../components/FormAlert'
 import FormField from '../components/FormField'
 import useAuthStore from '../store/authStore'
-import { registerParent, loginWithGoogle, signupKid, parseApiError, type KidSignupResponse } from '../api/auth'
+import {
+  registerParent,
+  loginWithGoogle,
+  signupKid,
+  signupKidWithGoogle,
+  decodeJWT,
+  parseApiError,
+  type KidSignupResponse,
+} from '../api/auth'
 import { isEmpty, isValidEmail } from '../utils/validation'
 
 export default function Signup() {
@@ -18,20 +26,23 @@ export default function Signup() {
   const [role, setRole] = useState<'parent' | 'kid' | null>(null)
   const [username, setUsername] = useState('')
   const [name, setName] = useState('')
-  const [email, setEmail] = useState('')         // parent email OR kid email
-  const [kidEmail, setKidEmail] = useState('')   // kid's own email
+  const [email, setEmail] = useState('')        // parent email
+  const [kidEmail, setKidEmail] = useState('')  // kid's own email (password signup)
   const [password, setPassword] = useState('')
   const [parentEmail, setParentEmail] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const [isLoading, setIsLoading] = useState(false)
 
-  // After parent signup: show "check your email" screen (login blocked until verified)
+  // After parent signup: show "check your email" screen
   const [parentPendingEmail, setParentPendingEmail] = useState<string | null>(null)
 
-  // After kid signup: show "verify your email + waiting for parent" screen
+  // After kid signup: show waiting screen
   const [kidPending, setKidPending] = useState<KidSignupResponse | null>(null)
   const [kidParentEmail, setKidParentEmail] = useState('')
+
+  // Kid Google signup: store id_token after Google popup, then collect remaining fields
+  const [kidGoogleToken, setKidGoogleToken] = useState<string | null>(null)
 
   useEffect(() => {
     if (role !== null) {
@@ -48,6 +59,7 @@ export default function Signup() {
     })
   }
 
+  // ── Password signup validation ────────────────────────────────────────────
   function validate(): Record<string, string> {
     const errs: Record<string, string> = {}
     if (isEmpty(username)) errs.username = t('errors.required')
@@ -68,33 +80,58 @@ export default function Signup() {
     return errs
   }
 
+  // ── Kid Google profile validation ─────────────────────────────────────────
+  function validateGoogleKid(): Record<string, string> {
+    const errs: Record<string, string> = {}
+    if (isEmpty(name)) errs.name = t('errors.required')
+    if (isEmpty(username)) errs.username = t('errors.required')
+    if (isEmpty(parentEmail)) errs.parentEmail = t('errors.required')
+    else if (!isValidEmail(parentEmail)) errs.parentEmail = t('errors.invalidEmail')
+    return errs
+  }
+
+  // ── Password signup submit ────────────────────────────────────────────────
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!role) return
-
     setError(null)
 
     const errs = validate()
-    if (Object.keys(errs).length > 0) {
-      setFieldErrors(errs)
-      return
-    }
+    if (Object.keys(errs).length > 0) { setFieldErrors(errs); return }
     setFieldErrors({})
-
     setIsLoading(true)
 
     try {
       if (role === 'parent') {
         await registerParent(email, username, password)
-        // Login is blocked until they verify their email — show "check your email" screen
         setParentPendingEmail(email)
       } else {
-        // Kid signup — kid can't log in until a parent accepts the email invite
         const result = await signupKid(name, username, kidEmail, password, parentEmail)
-        // Save parent email so we can show it on the waiting screen
         setKidParentEmail(parentEmail)
         setKidPending(result)
       }
+    } catch (err) {
+      setError(parseApiError(err))
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  // ── Kid Google profile submit ─────────────────────────────────────────────
+  async function handleGoogleKidSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!kidGoogleToken) return
+    setError(null)
+
+    const errs = validateGoogleKid()
+    if (Object.keys(errs).length > 0) { setFieldErrors(errs); return }
+    setFieldErrors({})
+    setIsLoading(true)
+
+    try {
+      const result = await signupKidWithGoogle(kidGoogleToken, name, username, parentEmail)
+      setKidParentEmail(parentEmail)
+      setKidPending(result)
     } catch (err) {
       setError(parseApiError(err))
     } finally {
@@ -121,23 +158,91 @@ export default function Signup() {
     )
   }
 
-  // ── Kid "verify email + waiting for parent" screen ────────────────────────
+  // ── Kid waiting screen ────────────────────────────────────────────────────
   if (kidPending) {
+    const emailVerified = kidPending.email_verified
     return (
       <main aria-labelledby="waiting-heading" className="flex flex-col items-center justify-center min-h-screen bg-primary-50 gap-6 py-12">
         <div className="text-5xl" aria-hidden="true">📬</div>
         <h1 id="waiting-heading" className="font-heading text-3xl font-bold text-primary-700 text-center">
-          {t('auth.almostThere')}
+          {emailVerified ? t('auth.waitingForParent') : t('auth.almostThere')}
         </h1>
+        {!emailVerified && (
+          <p className="font-body text-sm text-gray-700 text-center w-80 max-w-full">
+            {t('auth.kidStep1', { email: kidPending.email })}
+          </p>
+        )}
         <p className="font-body text-sm text-gray-700 text-center w-80 max-w-full">
-          {t('auth.kidStep1', { email: kidPending.email })}
-        </p>
-        <p className="font-body text-sm text-gray-700 text-center w-80 max-w-full">
-          {t('auth.kidStep2', { email: kidParentEmail })}
+          {emailVerified
+            ? t('auth.waitingForParentHint', { email: kidParentEmail })
+            : t('auth.kidStep2', { email: kidParentEmail })}
         </p>
         <Button variant="primary" onClick={() => navigate('/')}>
           {t('auth.backToHome')}
         </Button>
+        <LanguageSwitcher />
+      </main>
+    )
+  }
+
+  // ── Kid Google "complete your profile" screen ─────────────────────────────
+  if (kidGoogleToken) {
+    return (
+      <main aria-labelledby="google-profile-heading" className="flex flex-col items-center justify-center min-h-screen bg-primary-50 gap-6 py-12">
+        <div className="text-5xl" aria-hidden="true">👤</div>
+        <h1 id="google-profile-heading" className="font-heading text-3xl font-bold text-primary-700 text-center">
+          {t('auth.completeProfile')}
+        </h1>
+        <form
+          noValidate
+          className="flex w-80 max-w-full flex-col gap-4"
+          onSubmit={handleGoogleKidSubmit}
+          aria-labelledby="google-profile-heading"
+        >
+          {error && <FormAlert message={error} />}
+
+          <FormField
+            id="name"
+            label={t('auth.name')}
+            type="text"
+            value={name}
+            required
+            autoComplete="name"
+            error={fieldErrors.name}
+            onChange={e => { setName(e.target.value); clearFieldError('name') }}
+          />
+
+          <FormField
+            id="username"
+            label={t('auth.username')}
+            type="text"
+            value={username}
+            required
+            autoComplete="username"
+            error={fieldErrors.username}
+            onChange={e => { setUsername(e.target.value); clearFieldError('username') }}
+          />
+
+          <FormField
+            id="parentEmail"
+            label={t('auth.parentEmail')}
+            type="email"
+            value={parentEmail}
+            placeholder={t('auth.emailHint')}
+            required
+            autoComplete="off"
+            error={fieldErrors.parentEmail}
+            onChange={e => { setParentEmail(e.target.value); clearFieldError('parentEmail') }}
+          />
+
+          <Button variant="primary" type="submit" disabled={isLoading}>
+            {isLoading ? t('auth.signingUp') : t('auth.signup')}
+          </Button>
+
+          <Button variant="secondary" onClick={() => { setKidGoogleToken(null); setError(null); setFieldErrors({}) }}>
+            {t('auth.back')}
+          </Button>
+        </form>
         <LanguageSwitcher />
       </main>
     )
@@ -154,10 +259,7 @@ export default function Signup() {
         aria-labelledby="role-selector-label"
         className="flex w-80 max-w-full flex-col items-center gap-4 border-0 p-0 m-0 min-w-0"
       >
-        <p
-          id="role-selector-label"
-          className="font-body text-sm font-semibold text-gray-700 text-center w-full m-0"
-        >
+        <p id="role-selector-label" className="font-body text-sm font-semibold text-gray-700 text-center w-full m-0">
           {t('auth.roleSelector')}
         </p>
         <div role="radiogroup" aria-required="true" className="flex gap-4">
@@ -201,10 +303,7 @@ export default function Signup() {
               required
               autoComplete="username"
               error={fieldErrors.username}
-              onChange={e => {
-                setUsername(e.target.value)
-                clearFieldError('username')
-              }}
+              onChange={e => { setUsername(e.target.value); clearFieldError('username') }}
             />
 
             {role === 'kid' && (
@@ -217,10 +316,7 @@ export default function Signup() {
                 required
                 autoComplete="email"
                 error={fieldErrors.kidEmail}
-                onChange={e => {
-                  setKidEmail(e.target.value)
-                  clearFieldError('kidEmail')
-                }}
+                onChange={e => { setKidEmail(e.target.value); clearFieldError('kidEmail') }}
               />
             )}
 
@@ -233,10 +329,7 @@ export default function Signup() {
                 required
                 autoComplete="name"
                 error={fieldErrors.name}
-                onChange={e => {
-                  setName(e.target.value)
-                  clearFieldError('name')
-                }}
+                onChange={e => { setName(e.target.value); clearFieldError('name') }}
               />
             )}
 
@@ -250,10 +343,7 @@ export default function Signup() {
                 required
                 autoComplete="email"
                 error={fieldErrors.email}
-                onChange={e => {
-                  setEmail(e.target.value)
-                  clearFieldError('email')
-                }}
+                onChange={e => { setEmail(e.target.value); clearFieldError('email') }}
               />
             )}
 
@@ -265,10 +355,7 @@ export default function Signup() {
               required
               autoComplete="new-password"
               error={fieldErrors.password}
-              onChange={e => {
-                setPassword(e.target.value)
-                clearFieldError('password')
-              }}
+              onChange={e => { setPassword(e.target.value); clearFieldError('password') }}
             />
 
             {role === 'kid' && (
@@ -281,10 +368,7 @@ export default function Signup() {
                 required
                 autoComplete="off"
                 error={fieldErrors.parentEmail}
-                onChange={e => {
-                  setParentEmail(e.target.value)
-                  clearFieldError('parentEmail')
-                }}
+                onChange={e => { setParentEmail(e.target.value); clearFieldError('parentEmail') }}
               />
             )}
 
@@ -293,39 +377,37 @@ export default function Signup() {
             </Button>
           </form>
 
-          {/* Google sign-in — parents only */}
-          {role === 'parent' && (
-            <div className="flex flex-col items-center gap-3 w-80 max-w-full">
-              <div className="flex items-center gap-3 w-full">
-                <hr className="flex-1 border-gray-300" />
-                <span className="font-body text-xs text-gray-400">{t('auth.orContinueWith')}</span>
-                <hr className="flex-1 border-gray-300" />
-              </div>
-              <GoogleLogin
-                key={i18n.language}
-                onSuccess={async credentialResponse => {
-                  if (!credentialResponse.credential) return
-                  setError(null)
+          {/* Google sign-in — both parent and kid */}
+          <div className="flex flex-col items-center gap-3 w-80 max-w-full">
+            <div className="flex items-center gap-3 w-full">
+              <hr className="flex-1 border-gray-300" />
+              <span className="font-body text-xs text-gray-400">{t('auth.orContinueWith')}</span>
+              <hr className="flex-1 border-gray-300" />
+            </div>
+            <GoogleLogin
+              key={i18n.language}
+              onSuccess={async credentialResponse => {
+                if (!credentialResponse.credential) return
+                setError(null)
+                if (role === 'parent') {
                   try {
                     const { access, refresh } = await loginWithGoogle(credentialResponse.credential)
                     const payload = decodeJWT(access)
-                    login({
-                      id: payload.user_id as string,
-                      username: payload.username as string,
-                      email: payload.email as string,
-                      role: 'parent',
-                    }, access, refresh)
+                    login({ id: payload.user_id as string, username: payload.username as string, email: payload.email as string, role: 'parent' }, access, refresh)
                     navigate('/parent/dashboard')
                   } catch (err) {
                     setError(parseApiError(err))
                   }
-                }}
-                onError={() => setError(t('errors.api.invalidGoogleToken'))}
-                locale={i18n.language.split('-')[0]}
-                width="320"
-              />
-            </div>
-          )}
+                } else {
+                  // Kid — store token and show "complete your profile" form
+                  setKidGoogleToken(credentialResponse.credential)
+                }
+              }}
+              onError={() => setError(t('errors.api.invalidGoogleToken'))}
+              locale={i18n.language.split('-')[0]}
+              width="320"
+            />
+          </div>
         </>
       )}
 

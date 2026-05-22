@@ -39,7 +39,9 @@
     "kidStep2": "2. Ask your parent to accept the invitation we sent to {{email}}.",
     "waitingForParent": "Check your parent's email!",
     "waitingForParentHint": "We sent an invite to {{email}}. Ask your parent to click the link in the email to activate your account.",
-    "backToHome": "Go to home"
+    "backToHome": "Go to home",
+    "completeProfile": "Complete your profile",
+    "back": "Back"
   },
   "dashboard": {
     "greeting": "Hey, {{name}}!",
