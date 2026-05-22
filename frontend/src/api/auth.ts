@@ -116,6 +116,34 @@ export async function loginKidWithGoogle(idToken: string): Promise<TokenResponse
   return res.data
 }
 
+// POST /auth/verify-email/  — parent confirms their email after registration
+export async function verifyParentEmail(token: string) {
+  const res = await client.post('/auth/verify-email/', { token })
+  return res.data
+}
+
+// POST /auth/kid/verify-email/  — kid confirms their email after registration
+export async function verifyKidEmail(token: string) {
+  const res = await client.post('/auth/kid/verify-email/', { token })
+  return res.data
+}
+
+// POST /kids/signup/google/  — kid registration via Google (no email verification needed)
+export async function signupKidWithGoogle(
+  idToken: string,
+  name: string,
+  username: string,
+  parent_email: string,
+): Promise<KidSignupResponse> {
+  const res = await client.post<KidSignupResponse>('/kids/signup/google/', {
+    id_token: idToken,
+    name,
+    username,
+    parent_email,
+  })
+  return res.data
+}
+
 // POST /kids/signup/  — kid registration
 // Kid can't log in until a parent accepts the email invitation
 export async function signupKid(
