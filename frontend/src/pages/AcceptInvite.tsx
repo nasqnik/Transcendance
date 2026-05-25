@@ -21,6 +21,8 @@ import {
   isEmailNotVerified,
   isInvitationAlreadyAccepted,
   parseApiError,
+  getApiErrorKey,
+  getFieldErrors,
 } from '../api/errors'
 import {
   acceptInvitePath,
@@ -54,7 +56,7 @@ export default function AcceptInvite() {
 
   const [password, setPassword] = useState('')
   const [username, setUsername] = useState('')
-  const [formError, setFormError] = useState<string | null>(null)
+  const [formErrorKey, setFormErrorKey] = useState<string | null>(null)
   const { fieldErrors, setFieldErrors, clearFieldError, resetFieldErrors } = useFormErrors()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const autoAcceptTokenRef = useRef<string | null>(null)
@@ -155,11 +157,11 @@ export default function AcceptInvite() {
   }
 
   // ── Form submit ───────────────────────────────────────────────────────────
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.SubmitEvent) {
     e.preventDefault()
     if (state.status !== 'form') return
 
-    setFormError(null)
+    setFormErrorKey(null)
     const errs: Record<string, string> = {}
     if (isEmpty(username)) errs.username = t('errors.required')
     const passwordError = validatePasswordField(password, t, {
@@ -189,7 +191,9 @@ export default function AcceptInvite() {
             email: invitation.invite_email,
           })
         } catch (registerErr) {
-          setFormError(parseApiError(registerErr))
+          const fields = getFieldErrors(registerErr)
+          if (Object.keys(fields).length > 0) { setFieldErrors(fields); return }
+          setFormErrorKey(getApiErrorKey(registerErr))
         }
       } else if (isEmailNotVerified(err)) {
         setState({
@@ -197,7 +201,7 @@ export default function AcceptInvite() {
           email: invitation.invite_email,
         })
       } else {
-        setFormError(parseApiError(err))
+        setFormErrorKey(getApiErrorKey(err))
       }
     } finally {
       setIsSubmitting(false)
@@ -206,7 +210,8 @@ export default function AcceptInvite() {
 
   // ── Google sign-in (parent must use the invited email) ────────────────────
   async function handleGoogleAccept(invitation: InvitationDetails, credential: string) {
-    setFormError(null)
+    setFormErrorKey(null)
+    resetFieldErrors()
     setIsSubmitting(true)
 
     try {
@@ -227,7 +232,7 @@ export default function AcceptInvite() {
       establishParentSession(tokens)
       await doAccept(invitation)
     } catch (err) {
-      setFormError(parseApiError(err))
+      setFormErrorKey(getApiErrorKey(err))
     } finally {
       setIsSubmitting(false)
     }
@@ -312,7 +317,7 @@ export default function AcceptInvite() {
           aria-labelledby="invite-heading"
           aria-busy={isSubmitting}
         >
-          {formError && <FormAlert message={formError} />}
+          {formErrorKey && <FormAlert message={t(formErrorKey)} />}
 
           <FormField
             id="username"
@@ -322,6 +327,7 @@ export default function AcceptInvite() {
             value={username}
             required
             autoComplete="username"
+            disabled={isSubmitting}
             error={fieldErrors.username}
             onChange={e => { setUsername(e.target.value); clearFieldError('username') }}
           />
@@ -333,6 +339,7 @@ export default function AcceptInvite() {
             value={password}
             required
             autoComplete="new-password"
+            disabled={isSubmitting}
             error={fieldErrors.password}
             onChange={e => { setPassword(e.target.value); clearFieldError('password') }}
           />
@@ -343,8 +350,9 @@ export default function AcceptInvite() {
         </form>
 
         <GoogleSignInSection
+          disabled={isSubmitting}
           onSuccess={credential => handleGoogleAccept(state.invitation, credential)}
-          onError={() => setFormError(t('errors.api.invalidGoogleToken'))}
+          onError={() => { resetFieldErrors(); setFormErrorKey('errors.api.invalidGoogleToken') }}
           hint={t('invite.googleEmailHint', { email: state.invitation.invite_email })}
         />
       </AuthMessageLayout>
