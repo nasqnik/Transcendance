@@ -22,8 +22,8 @@ export default function Button({
   'aria-label': ariaLabel,
 }: ButtonProps) {
   const styles = {
-    primary: 'bg-primary-500 text-white disabled:opacity-50',
-    secondary: 'border-2 border-primary-500 text-primary-500 disabled:opacity-50',
+    primary: 'bg-primary-500 text-white hover:bg-primary-600 active:bg-primary-700 disabled:opacity-50',
+    secondary: 'border-2 border-primary-500 text-primary-500 hover:bg-primary-50 active:bg-primary-100 disabled:opacity-50',
   }
 
   return (

@@ -83,32 +83,69 @@ make fclean && make build-front && make up-front
 
 ## Auth flow
 
-Two separate account types — parent and kid — each with their own login endpoint.
+Two account types — **parent** and **kid** — with separate API endpoints. Public routes use `GuestRoute` (redirects logged-in users away from `/login` and `/signup`).
 
-### Parent signup
-1. `POST /auth/register/` → account created
-2. Auto-login via `POST /auth/token/` → JWT stored
-3. Redirect to `/parent/dashboard`
+### Parent signup (password)
+1. `POST /auth/register/` → account created (email not verified yet)
+2. UI shows “check your email” (no auto-login)
+3. Parent opens `/verify-email?token=...` → `POST /auth/verify-email/`
+4. Parent logs in at `/login`
+
+Parent signup via **Google** on `/signup` logs in immediately and goes to `/parent/dashboard`.
 
 ### Kid signup
-1. `POST /kids/signup/` → account created with status `awaiting_primary_parent`
-2. Backend emails the parent with an invite link
-3. Kid sees "Check your parent's email" screen
+1. `POST /kids/signup/` or `POST /kids/signup/google/` → `awaiting_primary_parent`
+2. Kid verifies email (password path) via `/kid/verify-email?token=...`
+3. Backend emails parent → `/accept-invite?token=...`
 4. Kid **cannot log in** until a parent accepts
 
 ### Parent accepts invite
-1. Parent opens `https://localhost/accept-invite?token=<uuid>`
-2. If already logged in + email matches → auto-accepted
-3. If not logged in → login form shown → accepted after login
-4. Kid status becomes `active` → kid can now log in
+1. Parent opens `/accept-invite?token=<uuid>`
+2. If logged in as parent with matching email → auto-accept
+3. Else: password and/or Google on the invite page → accept
+4. New parent: register → verify email → return to invite link
+5. Kid becomes `active`
+
+`sessionStorage` keeps the invite token across parent email verification (same browser). Re-open the invite email if needed on another device.
 
 ### Login
-One field — no role picker needed:
-- Type an **email** (`@` present) → calls parent login endpoint
-- Type a **username** (no `@`) → calls kid login endpoint
+Single form; frontend tries **parent** first, then **kid** (password and Google via `auth/loginFlow.ts`):
+- Parent success → `/parent/dashboard`
+- Kid success → `/dashboard`
+- Kid not active yet → waiting-for-parent screen
+
+Forgot password is not implemented yet (no link on login).
 
 ### Logout
-Clears Zustand store + localStorage, redirects to `/`.
+Clears Zustand persist → redirects to `/`.
+
+### Manual E2E test checklist
+
+Run with Docker stack up, mail catcher or backend logs for links, and `VITE_GOOGLE_CLIENT_ID` if testing Google.
+
+**English (LTR) — happy path**
+- [ ] Child signup (password) → kid verify email → waiting UI
+- [ ] Parent accept invite (password, new account) → verify → return to invite → success → dashboard
+- [ ] Child login → `/dashboard`
+- [ ] Parent signup (password) → verify → login → `/parent/dashboard`
+- [ ] Logout from dashboard returns home
+
+**Arabic (RTL)**
+- [ ] Switch language to AR on login/signup/invite; layout mirrors, labels readable
+- [ ] Email fields type left-to-right correctly
+- [ ] Submit forms still succeed
+
+**Keyboard & screen reader (spot check)**
+- [ ] Tab through login form, Google button, language switcher
+- [ ] Signup: choose role with Tab + Space on radio labels; form fields reachable
+- [ ] Submit empty form → field errors announced (`role="alert"`)
+- [ ] Invite loading → success or error updates announced (`aria-live`)
+
+**Edge cases**
+- [ ] Open invite link twice after accept → success + “Log in” if not signed in
+- [ ] Wrong invite token → error, no stale “return to invite” from verify
+- [ ] Signup: fill parent fields, switch to child → fields cleared
+- [ ] Logged-in kid opens invite link → parent-only error
 
 ---
 
@@ -119,12 +156,20 @@ src/
 ├── api/
 │   ├── client.ts       ← axios instance (auto-attaches token to every request)
 │   └── auth.ts         ← all auth API functions (login, signup, invite...)
+├── auth/
+│   ├── session.ts      ← JWT → auth store (+ optional navigate)
+│   └── loginFlow.ts    ← parent-then-kid login (password + Google)
 ├── components/
+│   ├── AuthMessageLayout.tsx
+│   ├── GoogleSignInSection.tsx
+│   ├── GuestRoute.tsx
 │   ├── Button.tsx
 │   ├── Input.tsx
 │   ├── LanguageSwitcher.tsx
 │   ├── ProtectedRoute.tsx
 │   └── ErrorBoundary.tsx
+├── hooks/
+│   └── useFormErrors.ts
 ├── i18n/
 │   ├── config.ts
 │   └── locales/

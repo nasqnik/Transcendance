@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import AuthMessageLayout from '../components/AuthMessageLayout'
 import Button from '../components/Button'
-import LanguageSwitcher from '../components/LanguageSwitcher'
 import { verifyParentEmail } from '../api/auth'
-import { parseApiError } from '../api/errors'
+import { getApiErrorKey, parseApiError } from '../api/errors'
+import { acceptInvitePath, getPendingInviteToken } from '../utils/inviteToken'
 
 type PageState = 'loading' | 'success' | 'error'
 
@@ -12,60 +13,114 @@ export default function VerifyEmail() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
-  const [state, setState] = useState<PageState>('loading')
-  const [errorMessage, setErrorMessage] = useState('')
+  const token = searchParams.get('token')
+  const [state, setState] = useState<PageState>(() => token ? 'loading' : 'error')
+  const [errorMessage, setErrorMessage] = useState(() => token ? '' : t('verify.invalidLink'))
+  const [linkAlreadyUsed, setLinkAlreadyUsed] = useState(false)
 
   useEffect(() => {
-    const token = searchParams.get('token')
-    if (!token) {
-      setErrorMessage(t('verify.invalidLink'))
-      setState('error')
-      return
-    }
+    if (!token) return
+
+    let cancelled = false
 
     verifyParentEmail(token)
-      .then(() => setState('success'))
+      .then(() => {
+        if (!cancelled) setState('success')
+      })
       .catch(err => {
+        if (cancelled) return
+        const key = getApiErrorKey(err)
+        if (key === 'errors.api.alreadyVerified') {
+          setState('success')
+          return
+        }
+        if (key === 'errors.api.invalidVerificationToken') {
+          setLinkAlreadyUsed(true)
+          setErrorMessage(t('verify.linkAlreadyUsed'))
+          setState('error')
+          return
+        }
+        setLinkAlreadyUsed(false)
         setErrorMessage(parseApiError(err))
         setState('error')
       })
-  }, [])
 
-  return (
-    <main aria-labelledby="verify-heading" className="flex flex-col items-center justify-center min-h-screen bg-primary-50 gap-6 py-12">
+    return () => {
+      cancelled = true
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- language changes must not re-trigger verification
+  }, [searchParams])
 
-      {state === 'loading' && (
-        <p className="font-body text-gray-600">{t('verify.loading')}</p>
-      )}
+  if (state === 'loading') {
+    return (
+      <AuthMessageLayout
+        headingId="verify-heading"
+        title={t('verify.loading')}
+        statusMessage={t('verify.loading')}
+      />
+    )
+  }
 
-      {state === 'success' && (
-        <>
-          <div className="text-5xl" aria-hidden="true">✅</div>
-          <h1 id="verify-heading" className="font-heading text-3xl font-bold text-primary-700 text-center">
-            {t('verify.successTitle')}
-          </h1>
-          <p className="font-body text-sm text-gray-700 text-center w-80 max-w-full">
-            {t('verify.parentSuccessHint')}
-          </p>
+  if (state === 'success') {
+    const pendingInvite = getPendingInviteToken()
+    return (
+      <AuthMessageLayout
+        headingId="verify-heading"
+        icon="✅"
+        title={t('verify.successTitle')}
+        statusMessage={t('verify.successTitle')}
+      >
+        <p className="font-body text-sm text-gray-700 text-center w-full">
+          {pendingInvite
+            ? t('verify.parentSuccessReturnInvite')
+            : t('verify.parentSuccessHint')}
+        </p>
+        {pendingInvite ? (
+          <Button
+            variant="primary"
+            onClick={() => navigate(acceptInvitePath(pendingInvite))}
+          >
+            {t('invite.returnToInvite')}
+          </Button>
+        ) : (
           <Button variant="primary" onClick={() => navigate('/login')}>
             {t('auth.login')}
           </Button>
-        </>
-      )}
+        )}
+      </AuthMessageLayout>
+    )
+  }
 
-      {state === 'error' && (
-        <>
-          <div className="text-5xl" aria-hidden="true">❌</div>
-          <h1 id="verify-heading" className="font-heading text-2xl font-bold text-primary-700 text-center">
-            {errorMessage}
-          </h1>
-          <Button variant="secondary" onClick={() => navigate('/')}>
-            {t('auth.backToHome')}
-          </Button>
-        </>
-      )}
+  const pendingInvite = getPendingInviteToken()
 
-      <LanguageSwitcher />
-    </main>
+  return (
+    <AuthMessageLayout
+      headingId="verify-heading"
+      icon={linkAlreadyUsed ? '✅' : '❌'}
+      title={linkAlreadyUsed ? t('verify.successTitle') : t('verify.errorTitle')}
+      alertMessage={linkAlreadyUsed ? undefined : errorMessage}
+      statusMessage={errorMessage}
+      titleSize="md"
+    >
+      {linkAlreadyUsed && (
+        <p className="font-body text-sm text-gray-700 text-center w-full">
+          {pendingInvite
+            ? t('verify.parentSuccessReturnInvite')
+            : t('verify.parentSuccessHint')}
+        </p>
+      )}
+      {linkAlreadyUsed && pendingInvite ? (
+        <Button
+          variant="primary"
+          onClick={() => navigate(acceptInvitePath(pendingInvite))}
+        >
+          {t('invite.returnToInvite')}
+        </Button>
+      ) : (
+        <Button variant="primary" onClick={() => navigate(linkAlreadyUsed ? '/login' : '/')}>
+          {linkAlreadyUsed ? t('auth.login') : t('auth.backToHome')}
+        </Button>
+      )}
+    </AuthMessageLayout>
   )
 }

@@ -9,6 +9,7 @@ interface FormFieldProps {
   placeholder?: string
   required?: boolean
   autoComplete?: string
+  dir?: 'ltr' | 'rtl'
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void
 }
 

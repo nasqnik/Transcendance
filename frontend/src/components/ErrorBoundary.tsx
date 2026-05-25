@@ -37,7 +37,7 @@ export default class ErrorBoundary extends Component<Props, State> {
           <button
             type="button"
             className="font-body text-sm text-primary-600 underline focus-ring rounded-sm"
-            onClick={() => this.setState({ hasError: false })}
+            onClick={() => window.location.reload()}
           >
             {i18n.t('errors.boundary.retry')}
           </button>

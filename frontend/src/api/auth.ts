@@ -7,8 +7,10 @@ import client from './client'
 // We don't verify the signature on the frontend — the backend does that.
 export function decodeJWT(token: string): Record<string, unknown> {
   try {
+    // JWTs use base64url (- instead of +, _ instead of /) — convert before atob
     const payload = token.split('.')[1]
-    // atob() decodes base64 → string, then we parse the JSON
+      .replace(/-/g, '+')
+      .replace(/_/g, '/')
     return JSON.parse(atob(payload))
   } catch {
     return {}
@@ -74,7 +76,10 @@ export interface InvitationDetails {
 }
 
 export async function getInvitation(token: string): Promise<InvitationDetails> {
-  const res = await client.get<InvitationDetails>(`/guardian-invitations/${token}/`)
+  // Public endpoint — do not send a stale JWT (can cause 401 before the view runs)
+  const res = await client.get<InvitationDetails>(`/guardian-invitations/${token}/`, {
+    skipAuth: true,
+  })
   return res.data
 }
 
@@ -116,16 +121,32 @@ export async function loginKidWithGoogle(idToken: string): Promise<TokenResponse
   return res.data
 }
 
+/** One in-flight verify POST per token (avoids Strict Mode double-submit). */
+function dedupeByToken<T>(cache: Map<string, Promise<T>>, token: string, request: () => Promise<T>): Promise<T> {
+  const existing = cache.get(token)
+  if (existing) return existing
+  const promise = request().finally(() => cache.delete(token))
+  cache.set(token, promise)
+  return promise
+}
+
+const parentVerifyByToken = new Map<string, Promise<unknown>>()
+const kidVerifyByToken = new Map<string, Promise<unknown>>()
+
 // POST /auth/verify-email/  — parent confirms their email after registration
-export async function verifyParentEmail(token: string) {
-  const res = await client.post('/auth/verify-email/', { token })
-  return res.data
+export function verifyParentEmail(token: string) {
+  return dedupeByToken(parentVerifyByToken, token, async () => {
+    const res = await client.post('/auth/verify-email/', { token })
+    return res.data
+  })
 }
 
 // POST /auth/kid/verify-email/  — kid confirms their email after registration
-export async function verifyKidEmail(token: string) {
-  const res = await client.post('/auth/kid/verify-email/', { token })
-  return res.data
+export function verifyKidEmail(token: string) {
+  return dedupeByToken(kidVerifyByToken, token, async () => {
+    const res = await client.post('/auth/kid/verify-email/', { token })
+    return res.data
+  })
 }
 
 // POST /kids/signup/google/  — kid registration via Google (no email verification needed)

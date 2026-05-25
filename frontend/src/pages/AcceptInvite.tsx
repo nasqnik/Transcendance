@@ -1,28 +1,42 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import AuthMessageLayout from '../components/AuthMessageLayout'
+import GoogleSignInSection from '../components/GoogleSignInSection'
 import Button from '../components/Button'
 import FormField from '../components/FormField'
 import FormAlert from '../components/FormAlert'
-import LanguageSwitcher from '../components/LanguageSwitcher'
+import { establishParentSession, parentUserFromAccessToken } from '../auth/session'
 import useAuthStore from '../store/authStore'
 import {
   getInvitation,
   acceptInvitation,
   loginParent,
+  loginWithGoogle,
   registerParent,
-  decodeJWT,
   parseApiError,
   type InvitationDetails,
 } from '../api/auth'
-import { isAccountNotFound } from '../api/errors'
-import { isEmpty } from '../utils/validation'
+import {
+  isAccountNotFound,
+  isEmailNotVerified,
+  isInvitationAlreadyAccepted,
+} from '../api/errors'
+import {
+  acceptInvitePath,
+  clearPendingInviteToken,
+  savePendingInviteToken,
+} from '../utils/inviteToken'
+import { useAuthHydrated } from '../hooks/useAuthHydrated'
+import { useFormErrors } from '../hooks/useFormErrors'
+import { emailsMatchIgnoreCase, isEmpty, validatePasswordField } from '../utils/validation'
 
 type PageState =
   | { status: 'loading' }
   | { status: 'error'; message: string }
   | { status: 'form'; invitation: InvitationDetails }
   | { status: 'wrong_account'; invitation: InvitationDetails; loggedInEmail: string }
+  | { status: 'verify_email'; email: string }
   | { status: 'accepting' }
   | { status: 'success'; kidName: string }
 
@@ -30,65 +44,112 @@ export default function AcceptInvite() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
-  const { isAuthenticated, currentUser, login, logout } = useAuthStore()
+  const hydrated = useAuthHydrated()
+  const { isAuthenticated, currentUser, logout } = useAuthStore()
+  const inviteToken = searchParams.get('token')
 
-  const [state, setState] = useState<PageState>({ status: 'loading' })
+  const [state, setState] = useState<PageState>(() =>
+    inviteToken ? { status: 'loading' } : { status: 'error', message: t('invite.notFound') }
+  )
 
   const [password, setPassword] = useState('')
   const [username, setUsername] = useState('')
   const [formError, setFormError] = useState<string | null>(null)
-  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
+  const { fieldErrors, setFieldErrors, clearFieldError, resetFieldErrors } = useFormErrors()
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const autoAcceptTokenRef = useRef<string | null>(null)
 
-  const inviteToken = searchParams.get('token')
-
-  function clearFieldError(field: string) {
-    setFieldErrors(prev => {
-      if (!prev[field]) return prev
-      const next = { ...prev }
-      delete next[field]
-      return next
-    })
-  }
-
-  // ── Load invitation on mount ──────────────────────────────────────────────
   useEffect(() => {
+    autoAcceptTokenRef.current = null
+  }, [inviteToken])
+
+  // ── Load invitation (after persist hydrates; not on language change) ──
+  useEffect(() => {
+    if (!hydrated) return
+
     if (!inviteToken) {
-      setState({ status: 'error', message: t('invite.notFound') })
+      clearPendingInviteToken()
       return
     }
 
+    let cancelled = false
+
     getInvitation(inviteToken)
       .then(invitation => {
+        if (cancelled) return
+
+        if (invitation.status === 'accepted') {
+          clearPendingInviteToken()
+          setState({ status: 'success', kidName: invitation.kid_name })
+          return
+        }
+
         if (invitation.status !== 'pending') {
-          setState({ status: 'error', message: t('invite.notFound') })
+          clearPendingInviteToken()
+          if (invitation.status === 'expired') {
+            setState({ status: 'error', message: t('invite.expired') })
+          } else {
+            setState({ status: 'error', message: t('invite.notPending') })
+          }
           return
         }
 
         if (isAuthenticated && currentUser?.role === 'parent') {
-          if (currentUser.email !== invitation.invite_email) {
+          if (!emailsMatchIgnoreCase(currentUser.email, invitation.invite_email)) {
+            savePendingInviteToken(inviteToken)
             setState({ status: 'wrong_account', invitation, loggedInEmail: currentUser.email! })
+          } else if (autoAcceptTokenRef.current !== inviteToken) {
+            autoAcceptTokenRef.current = inviteToken
+            void doAccept(invitation)
           } else {
-            doAccept(invitation)
+            setState(prev =>
+              prev.status === 'accepting' || prev.status === 'success'
+                ? prev
+                : { status: 'accepting' },
+            )
           }
+        } else if (isAuthenticated && currentUser?.role === 'kid') {
+          clearPendingInviteToken()
+          setState({ status: 'error', message: t('invite.parentOnly') })
         } else {
-          // Pre-fill username hint from invitation if provided
+          savePendingInviteToken(inviteToken)
+          setState(prev => {
+            if (prev.status === 'verify_email' || prev.status === 'accepting') {
+              return prev
+            }
+            return { status: 'form', invitation }
+          })
           if (invitation.invited_username_hint) {
-            setUsername(invitation.invited_username_hint)
+            setUsername(prev => prev || invitation.invited_username_hint)
           }
-          setState({ status: 'form', invitation })
         }
       })
-      .catch(() => setState({ status: 'error', message: t('invite.notFound') }))
-  }, [inviteToken])
+      .catch(() => {
+        if (!cancelled) {
+          clearPendingInviteToken()
+          setState({ status: 'error', message: t('invite.notFound') })
+        }
+      })
+
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally omit `t` (language changes must not re-fetch)
+  }, [hydrated, inviteToken, isAuthenticated, currentUser?.email, currentUser?.role])
 
   // ── Accept the invitation ─────────────────────────────────────────────────
   async function doAccept(invitation: InvitationDetails) {
     setState({ status: 'accepting' })
     try {
       await acceptInvitation(invitation.token)
+      clearPendingInviteToken()
       setState({ status: 'success', kidName: invitation.kid_name })
     } catch (err) {
+      if (isInvitationAlreadyAccepted(err)) {
+        clearPendingInviteToken()
+        setState({ status: 'success', kidName: invitation.kid_name })
+        return
+      }
       setState({ status: 'error', message: parseApiError(err) })
     }
   }
@@ -101,40 +162,40 @@ export default function AcceptInvite() {
     setFormError(null)
     const errs: Record<string, string> = {}
     if (isEmpty(username)) errs.username = t('errors.required')
-    if (isEmpty(password)) errs.password = t('errors.required')
+    const passwordError = validatePasswordField(password, t, {
+      username,
+      email: state.invitation.invite_email,
+    })
+    if (passwordError) errs.password = passwordError
     if (Object.keys(errs).length > 0) { setFieldErrors(errs); return }
-    setFieldErrors({})
+    resetFieldErrors()
     setIsSubmitting(true)
 
     const { invitation } = state
 
     try {
       // Try login first — works if the parent already has an account
-      const { access, refresh } = await loginParent(invitation.invite_email, password)
-      const payload = decodeJWT(access)
-      login(
-        { id: payload.user_id as string, username: payload.username as string, email: payload.email as string, role: 'parent' },
-        access,
-        refresh,
-      )
+      const tokens = await loginParent(invitation.invite_email, password)
+      establishParentSession(tokens)
       await doAccept(invitation)
 
     } catch (err) {
       if (isAccountNotFound(err)) {
-        // No account yet — register then login
+        // No account yet — register, then ask them to verify email before coming back
         try {
           await registerParent(invitation.invite_email, username, password)
-          const { access, refresh } = await loginParent(invitation.invite_email, password)
-          const payload = decodeJWT(access)
-          login(
-            { id: payload.user_id as string, username: payload.username as string, email: payload.email as string, role: 'parent' },
-            access,
-            refresh,
-          )
-          await doAccept(invitation)
+          setState({
+            status: 'verify_email',
+            email: invitation.invite_email,
+          })
         } catch (registerErr) {
           setFormError(parseApiError(registerErr))
         }
+      } else if (isEmailNotVerified(err)) {
+        setState({
+          status: 'verify_email',
+          email: invitation.invite_email,
+        })
       } else {
         setFormError(parseApiError(err))
       }
@@ -143,120 +204,215 @@ export default function AcceptInvite() {
     }
   }
 
+  // ── Google sign-in (parent must use the invited email) ────────────────────
+  async function handleGoogleAccept(invitation: InvitationDetails, credential: string) {
+    setFormError(null)
+    setIsSubmitting(true)
+
+    try {
+      const tokens = await loginWithGoogle(credential)
+      const user = parentUserFromAccessToken(tokens.access)
+
+      if (!emailsMatchIgnoreCase(user.email, invitation.invite_email)) {
+        establishParentSession(tokens)
+        savePendingInviteToken(invitation.token)
+        setState({
+          status: 'wrong_account',
+          invitation,
+          loggedInEmail: user.email!,
+        })
+        return
+      }
+
+      establishParentSession(tokens)
+      await doAccept(invitation)
+    } catch (err) {
+      setFormError(parseApiError(err))
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
   // ── Render ────────────────────────────────────────────────────────────────
-  return (
-    <main aria-labelledby="invite-heading" className="flex flex-col items-center justify-center min-h-screen bg-primary-50 gap-6 py-12">
+  if (!hydrated || state.status === 'loading') {
+    return (
+      <AuthMessageLayout
+        headingId="invite-heading"
+        title={t('invite.loading')}
+        statusMessage={t('invite.loading')}
+      />
+    )
+  }
 
-      {state.status === 'loading' && (
-        <p className="font-body text-gray-600">{t('invite.loading')}</p>
-      )}
-
-      {state.status === 'error' && (
-        <>
-          <div className="text-5xl" aria-hidden="true">❌</div>
-          <h1 id="invite-heading" className="font-heading text-2xl font-bold text-primary-700 text-center">
-            {state.message}
-          </h1>
-          <Button variant="secondary" onClick={() => navigate('/')}>
-            {t('auth.backToHome')}
-          </Button>
-        </>
-      )}
-
-      {state.status === 'form' && (
-        <>
-          <div className="text-5xl" aria-hidden="true">👋</div>
-          <h1 id="invite-heading" className="font-heading text-3xl font-bold text-primary-700 text-center">
-            {t('invite.title')}
-          </h1>
-          <p className="font-body text-sm text-gray-700 text-center w-80 max-w-full">
-            {t('invite.subtitle', { name: state.invitation.kid_name })}
-          </p>
-          <p className="font-body text-xs text-gray-500 text-center">
-            {t('invite.invitedAs', { email: state.invitation.invite_email })}
-          </p>
-
-          <form
-            noValidate
-            className="flex w-80 max-w-full flex-col gap-4"
-            onSubmit={handleSubmit}
-            aria-labelledby="invite-heading"
-          >
-            {formError && <FormAlert message={formError} />}
-
-            <FormField
-              id="username"
-              label={t('auth.username')}
-              type="text"
-              value={username}
-              required
-              autoComplete="username"
-              error={fieldErrors.username}
-              onChange={e => { setUsername(e.target.value); clearFieldError('username') }}
-            />
-
-            <FormField
-              id="password"
-              label={t('auth.password')}
-              type="password"
-              value={password}
-              required
-              autoComplete="current-password"
-              error={fieldErrors.password}
-              onChange={e => { setPassword(e.target.value); clearFieldError('password') }}
-            />
-
-            <Button variant="primary" type="submit" disabled={isSubmitting}>
-              {isSubmitting ? t('invite.accepting') : t('invite.accept')}
-            </Button>
-          </form>
-        </>
-      )}
-
-      {state.status === 'wrong_account' && (
-        <>
-          <div className="text-5xl" aria-hidden="true">⚠️</div>
-          <h1 id="invite-heading" className="font-heading text-2xl font-bold text-primary-700 text-center">
-            {t('invite.title')}
-          </h1>
-          <p className="font-body text-sm text-gray-700 text-center w-80 max-w-full">
-            {t('invite.wrongAccount', {
-              email: state.loggedInEmail,
-              inviteEmail: state.invitation.invite_email,
-            })}
-          </p>
+  if (state.status === 'error') {
+    return (
+      <AuthMessageLayout
+        headingId="invite-heading"
+        icon="❌"
+        title={t('invite.errorTitle')}
+        alertMessage={state.message}
+        statusMessage={state.message}
+        titleSize="md"
+      >
+        {isAuthenticated && currentUser?.role === 'kid' ? (
           <Button
-            variant="secondary"
+            variant="primary"
             onClick={() => {
               logout()
-              setState({ status: 'form', invitation: state.invitation })
+              navigate(acceptInvitePath(inviteToken!))
             }}
           >
             {t('nav.logout')}
           </Button>
-        </>
-      )}
-
-      {state.status === 'accepting' && (
-        <p className="font-body text-gray-600">{t('invite.accepting')}</p>
-      )}
-
-      {state.status === 'success' && (
-        <>
-          <div className="text-5xl" aria-hidden="true">🎉</div>
-          <h1 id="invite-heading" className="font-heading text-3xl font-bold text-primary-700 text-center">
-            {t('invite.successTitle')}
-          </h1>
-          <p className="font-body text-sm text-gray-700 text-center w-80 max-w-full">
-            {t('invite.successHint', { name: state.kidName })}
-          </p>
-          <Button variant="primary" onClick={() => navigate('/parent/dashboard')}>
-            {t('invite.goToDashboard')}
+        ) : (
+          <Button variant="secondary" onClick={() => navigate('/')}>
+            {t('auth.backToHome')}
           </Button>
-        </>
-      )}
+        )}
+      </AuthMessageLayout>
+    )
+  }
 
-      <LanguageSwitcher />
-    </main>
-  )
+  if (state.status === 'verify_email') {
+    return (
+      <AuthMessageLayout
+        headingId="invite-heading"
+        icon="📬"
+        title={t('auth.verifyYourEmail')}
+      >
+        <p className="font-body text-sm text-gray-700 text-center w-full">
+          {t('invite.verifyThenReturn', { email: state.email })}
+        </p>
+        {inviteToken && (
+          <Button
+            variant="primary"
+            onClick={() => navigate(acceptInvitePath(inviteToken))}
+          >
+            {t('invite.returnToInvite')}
+          </Button>
+        )}
+      </AuthMessageLayout>
+    )
+  }
+
+  if (state.status === 'form') {
+    return (
+      <AuthMessageLayout headingId="invite-heading" icon="👋" title={t('invite.title')}>
+        <p className="font-body text-sm text-gray-700 text-center w-full">
+          {t('invite.subtitle', { name: state.invitation.kid_name })}
+        </p>
+        <p className="font-body text-xs text-gray-500 text-center w-full">
+          {t('invite.invitedAs', { email: state.invitation.invite_email })}
+        </p>
+
+        <form
+          noValidate
+          className="flex w-full flex-col gap-4"
+          onSubmit={handleSubmit}
+          aria-labelledby="invite-heading"
+          aria-busy={isSubmitting}
+        >
+          {formError && <FormAlert message={formError} />}
+
+          <FormField
+            id="username"
+            label={t('auth.username')}
+            type="text"
+            dir="ltr"
+            value={username}
+            required
+            autoComplete="username"
+            error={fieldErrors.username}
+            onChange={e => { setUsername(e.target.value); clearFieldError('username') }}
+          />
+
+          <FormField
+            id="password"
+            label={t('auth.password')}
+            type="password"
+            value={password}
+            required
+            autoComplete="new-password"
+            error={fieldErrors.password}
+            onChange={e => { setPassword(e.target.value); clearFieldError('password') }}
+          />
+
+          <Button variant="primary" type="submit" disabled={isSubmitting}>
+            {isSubmitting ? t('invite.accepting') : t('invite.accept')}
+          </Button>
+        </form>
+
+        <GoogleSignInSection
+          onSuccess={credential => handleGoogleAccept(state.invitation, credential)}
+          onError={() => setFormError(t('errors.api.invalidGoogleToken'))}
+          hint={t('invite.googleEmailHint', { email: state.invitation.invite_email })}
+        />
+      </AuthMessageLayout>
+    )
+  }
+
+  if (state.status === 'wrong_account') {
+    return (
+      <AuthMessageLayout
+        headingId="invite-heading"
+        icon="⚠️"
+        title={t('invite.title')}
+        titleSize="md"
+      >
+        <p className="font-body text-sm text-gray-700 text-center w-full">
+          {t('invite.wrongAccount', {
+            email: state.loggedInEmail,
+            inviteEmail: state.invitation.invite_email,
+          })}
+        </p>
+        <Button
+          variant="secondary"
+          onClick={() => {
+            logout()
+            if (state.invitation.status === 'pending') {
+              setState({ status: 'form', invitation: state.invitation })
+            } else {
+              navigate(acceptInvitePath(state.invitation.token))
+            }
+          }}
+        >
+          {t('nav.logout')}
+        </Button>
+      </AuthMessageLayout>
+    )
+  }
+
+  if (state.status === 'accepting') {
+    return (
+      <AuthMessageLayout
+        headingId="invite-heading"
+        title={t('invite.accepting')}
+        statusMessage={t('invite.accepting')}
+      />
+    )
+  }
+
+  if (state.status === 'success') {
+    const loggedInParent = isAuthenticated && currentUser?.role === 'parent'
+    return (
+      <AuthMessageLayout
+        headingId="invite-heading"
+        icon="🎉"
+        title={t('invite.successTitle')}
+        statusMessage={t('invite.successTitle')}
+      >
+        <p className="font-body text-sm text-gray-700 text-center w-full">
+          {t('invite.successHint', { name: state.kidName })}
+        </p>
+        <Button
+          variant="primary"
+          onClick={() => navigate(loggedInParent ? '/parent/dashboard' : '/login')}
+        >
+          {loggedInParent ? t('invite.goToDashboard') : t('auth.login')}
+        </Button>
+      </AuthMessageLayout>
+    )
+  }
+
+  return null
 }

@@ -2,13 +2,31 @@ import axios from 'axios'
 import useAuthStore from '../store/authStore'
 
 // VITE_API_URL should be set to https://localhost/api in docker-compose
+const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'https://localhost/api'
+
 const client = axios.create({
-  baseURL: import.meta.env.VITE_API_URL ?? 'https://localhost/api',
+  baseURL: API_BASE_URL,
 })
+
+/** Login/register 401 means bad credentials — not an expired session. */
+const AUTH_PATHS_NO_REFRESH = [
+  '/auth/token/',
+  '/auth/kid/token/',
+  '/auth/register/',
+  '/auth/google/',
+  '/auth/kid/google/',
+]
+
+function isCredentialRequest(url?: string): boolean {
+  if (!url) return false
+  return AUTH_PATHS_NO_REFRESH.some(path => url.includes(path))
+}
 
 // ── Request interceptor ───────────────────────────────────────────────────────
 // Runs before every request — attaches the access token if we have one
 client.interceptors.request.use((config) => {
+  if (config.skipAuth) return config
+
   const token = useAuthStore.getState().token
 
   if (token) {
@@ -17,6 +35,10 @@ client.interceptors.request.use((config) => {
 
   return config
 })
+
+// Shared promise across concurrent 401s — prevents multiple simultaneous refresh calls
+// (token rotation means the second call would fail and cause an unnecessary logout)
+let refreshPromise: Promise<{ access: string; refresh: string }> | null = null
 
 // ── Response interceptor ──────────────────────────────────────────────────────
 // Runs after every response comes back.
@@ -32,15 +54,17 @@ client.interceptors.response.use(
 
     // Only handle 401 errors, and only once per request (avoid infinite loop)
     // _retry is a custom flag we set so we don't retry the retry
-    if (error.response?.status !== 401 || originalRequest._retry) {
+    if (
+      error.response?.status !== 401 ||
+      originalRequest._retry ||
+      isCredentialRequest(originalRequest.url)
+    ) {
       return Promise.reject(error)
     }
 
     const { refreshToken, currentUser, login, logout } = useAuthStore.getState()
 
-    // If we don't have a refresh token, log the user out immediately
     if (!refreshToken) {
-      logout()
       return Promise.reject(error)
     }
 
@@ -53,15 +77,18 @@ client.interceptors.response.use(
         ? '/auth/kid/token/refresh/'
         : '/auth/token/refresh/'
 
-      // Call the refresh endpoint directly with axios (not client)
-      // so this request doesn't go through our interceptor again
-      const res = await axios.post(
-        `${import.meta.env.VITE_API_URL ?? 'https://localhost/api'}${refreshEndpoint}`,
-        { refresh: refreshToken },
-      )
+      // Reuse an in-flight refresh rather than firing a second one —
+      // token rotation would cause the second call to fail and log the user out
+      if (!refreshPromise) {
+        refreshPromise = axios.post(
+          `${API_BASE_URL}${refreshEndpoint}`,
+          { refresh: refreshToken },
+        )
+          .then(res => ({ access: res.data.access, refresh: res.data.refresh }))
+          .finally(() => { refreshPromise = null })
+      }
 
-      const newAccessToken = res.data.access
-      const newRefreshToken = res.data.refresh
+      const { access: newAccessToken, refresh: newRefreshToken } = await refreshPromise
 
       // Save the new tokens — keep everything else the same
       login(currentUser!, newAccessToken, newRefreshToken)
