@@ -26,6 +26,7 @@ class CustomUser(AbstractUser):
         default="parent",
     )
 
+    # is more unique than email, because user can change there email, but not their google sub
     google_sub = models.CharField(
         max_length=255,
         unique=True,
@@ -49,8 +50,12 @@ class CustomUser(AbstractUser):
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = ["username"]
 
+    # mostly will be used for those two cases:
+    # 1. create_user -> default user creation
+    # 2. create_superuser -> we will override this to set the role to admin
     objects = CustomUserManager()
 
+    # define what to return when we print the user
     def __str__(self):
         return self.email
 
@@ -119,6 +124,10 @@ class Kid(models.Model):
             return False
         return check_password(raw_password, self.password_hash)
 
+    # property decorator is used to define a property method
+    # that means it will be something like a field, but it will be a method
+    # it will be used like -> kid.is_authenticated
+    # instead of -> kid.is_authenticated()
     @property
     def is_authenticated(self):
         return True
@@ -132,16 +141,18 @@ class Kid(models.Model):
 
 
 class GuardianInvitation(models.Model):
-    class Status(models.TextChoices):
-        PENDING = "pending", "Pending"
-        ACCEPTED = "accepted", "Accepted"
-        DECLINED = "declined", "Declined"
-        EXPIRED = "expired", "Expired"
-        REVOKED = "revoked", "Revoked"
+    STATUS_CHOICES = (
+        ("pending", "Pending"),
+        ("accepted", "Accepted"),
+        ("declined", "Declined"),
+        ("expired", "Expired"),
+        ("revoked", "Revoked"),
+    )
 
-    class Role(models.TextChoices):
-        PRIMARY = "primary", "Primary"
-        SECONDARY = "secondary", "Secondary"
+    ROLE_CHOICES = (
+        ("primary", "Primary"),
+        ("secondary", "Secondary"),
+    )
 
     id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
 
@@ -168,14 +179,14 @@ class GuardianInvitation(models.Model):
 
     role = models.CharField(
         max_length=20,
-        choices=Role.choices,
-        default=Role.PRIMARY,
+        choices=ROLE_CHOICES,
+        default="primary",
     )
 
     status = models.CharField(
         max_length=20,
-        choices=Status.choices,
-        default=Status.PENDING,
+        choices=STATUS_CHOICES,
+        default="pending",
         db_index=True,
     )
 

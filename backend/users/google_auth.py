@@ -31,3 +31,11 @@ def verify_google_id_token(token: str) -> dict:
         raise GoogleAuthError("Google account has no email.")
 
     return idinfo
+
+# verify_google_id_token is a function that verifies a Google ID token by:
+# 1. Checking if the Google client ID is configured
+# 2. Verifying the ID token using the Google Auth library
+# 3. Checking if the issuer is valid
+# 4. Checking if the email is verified
+# 5. Checking if the email is present
+# 6. Returning the ID token information

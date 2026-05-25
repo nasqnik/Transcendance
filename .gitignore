@@ -4,3 +4,10 @@ security/ssl/server.crt
 
 # Editor / tooling
 .vscode/
+
+.venv/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class

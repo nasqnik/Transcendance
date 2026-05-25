@@ -16,6 +16,10 @@ class KidJWTAuthentication(JWTAuthentication):
         if raw_token is None:
             return None
 
+        # we check here : 
+            # 1. token format is valid
+            # 2. Signature matches the secret key
+            # 3. Token is not expired
         validated_token = self.get_validated_token(raw_token)
         if validated_token.get("role") != "kid":
             return None
@@ -30,3 +34,9 @@ class KidJWTAuthentication(JWTAuthentication):
             raise InvalidToken("Kid not found.") from exc
 
         return (kid, validated_token)
+
+# KidJWTAuthentication is a class that authenticates kid access tokens (role=kid) without loading CustomUser.
+# the class inherits from JWTAuthentication and overrides the authenticate method to authenticate kid access tokens.
+
+# jwt:
+# header: Authorization: Bearer <token>
