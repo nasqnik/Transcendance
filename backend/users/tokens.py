@@ -12,6 +12,7 @@ class KidRefreshToken(RefreshToken):
         token["role"] = "kid"
         token["kid_id"] = str(kid.id)
         token["username"] = kid.username
+        token["email"] = kid.email  # None if kid has no email
         return token
 
 # cls is the class itself

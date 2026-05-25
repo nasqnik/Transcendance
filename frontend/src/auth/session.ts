@@ -30,6 +30,7 @@ export function kidUserFromAccessToken(access: string): User {
   return {
     id: payload.kid_id as string,
     username: payload.username as string,
+    email: (payload.email as string) ?? undefined,
     role: 'kid',
   }
 }
