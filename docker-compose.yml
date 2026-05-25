@@ -8,32 +8,33 @@ services:
       POSTGRES_PASSWORD: ${DB_PASSWORD}
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-databases.sh:/docker-entrypoint-initdb.d/init-databases.sh:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
       interval: 5s
       timeout: 5s
       retries: 10
 
-  backend:
+  auth-service:
     build:
-      context: ./backend
+      context: ./services/auth-service
       dockerfile: Dockerfile
       args:
         DOCKER_UID: ${DOCKER_UID}
         DOCKER_GID: ${DOCKER_GID}
-    container_name: django_backend
+    container_name: auth_service
     depends_on:
       db:
         condition: service_healthy
     ports:
-      - "8000:8000"
+      - "8001:8000"
     volumes:
-      - ./backend:/app
+      - ./services/auth-service:/app
     env_file:
       - .env
     environment:
       DB_ENGINE: ${DB_ENGINE}
-      DB_NAME: ${DB_NAME}
+      DB_NAME: ${AUTH_DB_NAME:-auth_db}
       DB_USER: ${DB_USER}
       DB_PASSWORD: ${DB_PASSWORD}
       DB_HOST: ${DB_HOST}
@@ -50,6 +51,33 @@ services:
       DEFAULT_FROM_EMAIL: ${DEFAULT_FROM_EMAIL:-noreply@localhost}
       FRONTEND_URL: ${FRONTEND_URL:-https://localhost}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+    command: python manage.py runserver 0.0.0.0:8000
+
+  task-service:
+    build:
+      context: ./services/task-service
+      dockerfile: Dockerfile
+      args:
+        DOCKER_UID: ${DOCKER_UID}
+        DOCKER_GID: ${DOCKER_GID}
+    container_name: task_service
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8002:8000"
+    volumes:
+      - ./services/task-service:/app
+    env_file:
+      - .env
+    environment:
+      DB_ENGINE: ${DB_ENGINE}
+      DB_NAME: ${TASK_DB_NAME:-task_db}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT}
+      APP_NAME: ${APP_NAME:-KiddoPath}
     command: python manage.py runserver 0.0.0.0:8000
 
   frontend:
@@ -73,7 +101,8 @@ services:
       dockerfile: dockerfile
     container_name: nginx_proxy
     depends_on:
-      - backend
+      - auth-service
+      - task-service
       - frontend
     ports:
       - "80:80"

@@ -1,54 +1,41 @@
-create superuser for django
-    docker compose exec backend python manage.py createsuperuser
+    docker compose exec auth-service python manage.py createsuperuser
 
-django-admin startproject <project name> .
+# to enter the container
+1.    docker compose exec auth-service bash
 
-every time you will create a new model:
-1.    docker compose exec backend bash
-2.    python manage.py makemigrations
-3.    python manage.py migrate
-or
-1.    docker compose exec backend python manage.py makemigrations
-2.    docker compose exec backend python manage.py migrate
+# to make migrations
+1.    docker compose exec auth-service python manage.py makemigrations
+2.    docker compose exec auth-service python manage.py migrate
 
-JWT (SimpleJWT) — after changing `requirements.txt`, **you must rebuild the backend image** (a `restart` is not enough — deps install at **build** time in the Dockerfile):
+JWT (SimpleJWT) — after changing `requirements.txt`, **you must rebuild the auth-service image** (a `restart` is not enough — deps install at **build** time in the Dockerfile):
 
 ```bash
-docker compose build backend && docker compose up -d backend
-docker compose exec backend python manage.py check
+docker compose build auth-service && docker compose up -d auth-service
+docker compose exec auth-service python manage.py check
 ```
 
-Endpoints (JSON uses **`emailOrUsername`** + **`password`** — email or username for parent login). Use your real superuser values — not placeholders like `<superuser-email>`.
+# Parent login (get JWT access + refresh tokens)
 
-- Direct backend (compose maps **port 8000**): `POST http://localhost:8000/api/auth/token/`
-- Behind nginx (**HTTPS**): `POST https://localhost/api/auth/token/` — add **`curl -k`** for the self-signed cert in dev.
+- Direct auth-service (compose maps **port 8001**): `POST http://localhost:8001/api/auth/token/`
+- Via nginx (HTTPS): `POST https://localhost/api/auth/token/`
 
-- Obtain: `{"emailOrUsername":"you@example.com","password":"your-password"}` → `access` + `refresh`
-- Refresh: `{"refresh":"<refresh-token>"}`
-- Verify: `{"token":"<access-token>"}`
-
-If **`curl`** prints nothing, **`curl -s` hides errors** (e.g. connection refused). Use **`curl -sS`** or **`curl -v`**, or **`docker compose logs backend`**.
+If **`curl`** prints nothing, **`curl -s` hides errors** (e.g. connection refused). Use **`curl -sS`** or **`curl -v`**, or **`docker compose logs auth-service`**.
 
 ```bash
-curl -sS http://localhost:8000/api/auth/token/ \
-  -H 'Content-Type: application/json' \
-  -d '{"emailOrUsername":"you@example.com","password":"your-real-password"}'
+curl -sS -X POST http://localhost:8001/api/auth/token/ \
+  -H "Content-Type: application/json" \
+  -d '{"emailOrUsername":"you@example.com","password":"yourpassword"}'
 ```
+
+# Common issues
+
+## ModuleNotFoundError after adding a pip package
+
+Dependencies were added to `requirements.txt` but the container image is old. Rebuild **auth-service** (see commands above). **`docker compose restart`** does not reinstall pip packages.
+
+Quick fix without rebuild (dev only):
 
 ```bash
-curl -sSk https://localhost/api/auth/token/ \
-  -H 'Content-Type: application/json' \
-  -d '{"emailOrUsername":"you@example.com","password":"your-real-password"}'
+docker compose exec auth-service pip install --no-cache-dir -r requirements.txt
+docker compose restart auth-service
 ```
-
-### If logs show `ModuleNotFoundError: No module named 'rest_framework'`
-
-Dependencies were added to `requirements.txt` but the container image is old. Rebuild **backend** (see commands above). **`docker compose restart`** does not reinstall pip packages.
-
-Quick one-off install inside the running container (lost on next recreate unless you rebuild):
-
-```bash
-docker compose exec backend pip install --no-cache-dir -r requirements.txt
-docker compose restart backend
-```
-python manage.py createsuperuser
