@@ -42,7 +42,7 @@ export default function Login() {
     }
   }
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.SubmitEvent) {
     e.preventDefault()
 
     const errs: Record<string, string> = {}

@@ -29,7 +29,7 @@ export default function ChildDashboard() {
     navigate('/')
   }
 
-  async function handleInvite(e: React.FormEvent) {
+  async function handleInvite(e: React.SubmitEvent) {
     e.preventDefault()
     setError(null)
 
