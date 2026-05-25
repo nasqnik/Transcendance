@@ -15,6 +15,23 @@ from .google_kids import (
     signup_kid_from_google,
 )
 from .google_users import GoogleAccountConflictError, get_or_create_parent_from_google
+from .messages import (
+    ACCOUNT_INACTIVE,
+    EMAIL_ALREADY_REGISTERED,
+    EMAIL_REGISTERED_AS_KID_ACCOUNT,
+    KID_ACCOUNT_NOT_ACTIVE,
+    KID_ACCOUNT_NOT_ACTIVE_YET,
+    KID_EMAIL_MUST_DIFFER_FROM_PARENT,
+    KID_EMAIL_NOT_VERIFIED,
+    KID_INVALID_ACCESS_TOKEN,
+    KID_INVALID_REFRESH_TOKEN,
+    KID_NOT_ACCESS_TOKEN,
+    KID_NOT_FOUND,
+    KID_NOT_REFRESH_TOKEN,
+    KID_VERIFY_EMAIL_FIRST,
+    MAX_GUARDIANS_REACHED,
+    USERNAME_ALREADY_TAKEN,
+)
 from .models import CustomUser, GuardianInvitation, Kid
 from .services import (
     EmailAlreadyVerified,
@@ -104,30 +121,26 @@ class KidSignupSerializer(serializers.Serializer):
 
     def validate_username(self, value):
         if username_is_taken(value):
-            raise serializers.ValidationError("This username is already taken.")
+            raise serializers.ValidationError(USERNAME_ALREADY_TAKEN)
         return value
 
     def validate_email(self, value):
         email = value.lower()
         if email_belongs_to_kid(email) or email_belongs_to_parent(email):
-            raise serializers.ValidationError("This email is already registered.")
+            raise serializers.ValidationError(EMAIL_ALREADY_REGISTERED)
         return email
 
     def validate_parent_email(self, value):
         parent_email = value.lower()
         if email_belongs_to_kid(parent_email):
-            raise serializers.ValidationError(
-                "This email is registered as a kid account."
-            )
+            raise serializers.ValidationError(EMAIL_REGISTERED_AS_KID_ACCOUNT)
         return parent_email
 
     def validate(self, attrs):
         email = attrs["email"]
         parent_email = attrs["parent_email"]
         if email == parent_email:
-            raise serializers.ValidationError(
-                "Kid email must be different from the parent email."
-            )
+            raise serializers.ValidationError(KID_EMAIL_MUST_DIFFER_FROM_PARENT)
         return attrs
 
     def validate_password(self, value):
@@ -192,12 +205,12 @@ class ParentRegisterSerializer(serializers.ModelSerializer):
     def validate_email(self, value):
         email = value.lower()
         if email_belongs_to_kid(email):
-            raise serializers.ValidationError("This email is already registered.")
+            raise serializers.ValidationError(EMAIL_ALREADY_REGISTERED)
         return email
 
     def validate_username(self, value):
         if username_belongs_to_kid(value):
-            raise serializers.ValidationError("This username is already taken.")
+            raise serializers.ValidationError(USERNAME_ALREADY_TAKEN)
         return value
 
     def validate_password(self, value):
@@ -311,10 +324,10 @@ class KidTokenObtainSerializer(serializers.Serializer):
             )
 
         if not kid.email_verified:
-            raise AuthenticationFailed("Verify your email first.")
+            raise AuthenticationFailed(KID_VERIFY_EMAIL_FIRST)
 
         if kid.registration_status != Kid.RegistrationStatus.ACTIVE:
-            raise AuthenticationFailed("Kid account is not active yet.")
+            raise AuthenticationFailed(KID_ACCOUNT_NOT_ACTIVE_YET)
 
         refresh = KidRefreshToken.for_kid(kid)
         return {
@@ -330,21 +343,21 @@ class KidTokenRefreshSerializer(serializers.Serializer):
         try:
             refresh = KidRefreshToken(attrs["refresh"])
         except Exception as exc:
-            raise serializers.ValidationError("Invalid refresh token.") from exc
+            raise serializers.ValidationError(KID_INVALID_REFRESH_TOKEN) from exc
 
         if refresh.get("role") != "kid":
-            raise serializers.ValidationError("Not a kid refresh token.")
+            raise serializers.ValidationError(KID_NOT_REFRESH_TOKEN)
 
         try:
             kid = Kid.objects.get(pk=refresh["kid_id"])
         except Kid.DoesNotExist as exc:
-            raise serializers.ValidationError("Kid not found.") from exc
+            raise serializers.ValidationError(KID_NOT_FOUND) from exc
 
         if not kid.email_verified:
-            raise serializers.ValidationError("Kid email is not verified.")
+            raise serializers.ValidationError(KID_EMAIL_NOT_VERIFIED)
 
         if kid.registration_status != Kid.RegistrationStatus.ACTIVE:
-            raise serializers.ValidationError("Kid account is not active.")
+            raise serializers.ValidationError(KID_ACCOUNT_NOT_ACTIVE)
 
         return {
             "refresh": str(refresh),
@@ -359,21 +372,21 @@ class KidTokenVerifySerializer(serializers.Serializer):
         try:
             token = AccessToken(attrs["token"])
         except Exception as exc:
-            raise serializers.ValidationError("Invalid token.") from exc
+            raise serializers.ValidationError(KID_INVALID_ACCESS_TOKEN) from exc
 
         if token.get("role") != "kid":
-            raise serializers.ValidationError("Not a kid access token.")
+            raise serializers.ValidationError(KID_NOT_ACCESS_TOKEN)
 
         try:
             kid = Kid.objects.get(pk=token["kid_id"])
         except Kid.DoesNotExist as exc:
-            raise serializers.ValidationError("Kid not found.") from exc
+            raise serializers.ValidationError(KID_NOT_FOUND) from exc
 
         if not kid.email_verified:
-            raise serializers.ValidationError("Kid email is not verified.")
+            raise serializers.ValidationError(KID_EMAIL_NOT_VERIFIED)
 
         if kid.registration_status != Kid.RegistrationStatus.ACTIVE:
-            raise serializers.ValidationError("Kid account is not active.")
+            raise serializers.ValidationError(KID_ACCOUNT_NOT_ACTIVE)
 
         return {}
 
@@ -399,9 +412,7 @@ class InviteSecondParentSerializer(serializers.Serializer):
                 ),
             )
         except MaxGuardiansReached as exc:
-            raise serializers.ValidationError(
-                "This kid already has the maximum number of guardians."
-            ) from exc
+            raise serializers.ValidationError(MAX_GUARDIANS_REACHED) from exc
 
     def to_representation(self, instance):
         data = {
@@ -432,7 +443,7 @@ class GoogleLoginSerializer(serializers.Serializer):
             raise serializers.ValidationError(str(exc)) from exc
 
         if not user.is_active:
-            raise serializers.ValidationError("This account is inactive.")
+            raise serializers.ValidationError(ACCOUNT_INACTIVE)
 
         refresh = CustomTokenObtainPairSerializer.get_token(user)
         return {
@@ -503,15 +514,13 @@ class KidGoogleSignupSerializer(serializers.Serializer):
 
     def validate_username(self, value):
         if username_is_taken(value):
-            raise serializers.ValidationError("This username is already taken.")
+            raise serializers.ValidationError(USERNAME_ALREADY_TAKEN)
         return value
 
     def validate_parent_email(self, value):
         parent_email = value.lower()
         if email_belongs_to_kid(parent_email):
-            raise serializers.ValidationError(
-                "This email is registered as a kid account."
-            )
+            raise serializers.ValidationError(EMAIL_REGISTERED_AS_KID_ACCOUNT)
         return parent_email
 
     def validate(self, attrs):
@@ -523,9 +532,7 @@ class KidGoogleSignupSerializer(serializers.Serializer):
         kid_email = idinfo["email"].lower()
         parent_email = attrs["parent_email"]
         if kid_email == parent_email:
-            raise serializers.ValidationError(
-                "Kid email must be different from the parent email."
-            )
+            raise serializers.ValidationError(KID_EMAIL_MUST_DIFFER_FROM_PARENT)
         return attrs
 
     @transaction.atomic

@@ -32,7 +32,7 @@ from .services import InvitationNotFound, get_guardian_invitation_by_token, mark
 class KidSignupView(generics.CreateAPIView):
     """Register a kid and email the primary guardian a pending invitation."""
 
-    permission_classes = [AllowAny]
+    permission_classes = [AllowAny] # no login required
     serializer_class = KidSignupSerializer
 
 
@@ -58,6 +58,7 @@ class GoogleLoginView(APIView):
 
     def post(self, request):
         serializer = GoogleLoginSerializer(data=request.data)
+        #is_valid call => validate_username , validate_password, validate_email, .... , validate .
         serializer.is_valid(raise_exception=True)
         return Response(serializer.validated_data, status=status.HTTP_200_OK)
 
@@ -98,7 +99,7 @@ class GuardianInviteDetailView(generics.RetrieveAPIView):
 class AcceptGuardianInviteView(generics.GenericAPIView):
     """Authenticated parent accepts a pending guardian invitation."""
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated] #logged in parent required
     serializer_class = AcceptGuardianInviteSerializer
 
     def post(self, request, *args, **kwargs):
@@ -152,7 +153,7 @@ class KidGoogleLoginView(APIView):
 
 
 class InviteSecondParentView(generics.CreateAPIView):
-    permission_classes = [IsAuthenticatedKid]
+    permission_classes = [IsAuthenticatedKid] #logged in kid required
     serializer_class = InviteSecondParentSerializer
 
 
