@@ -11,7 +11,8 @@ A gamified task and learning app for children aged 8–12. This document covers 
 | Project scaffolding | ✅ Done |
 | Tailwind design tokens (colors, fonts) | ✅ Done |
 | i18n — EN / RU / AR + RTL | ✅ Done |
-| React Router + protected routes | ✅ Done |
+| React Router (layout routes + guards) | ✅ Done |
+| Unit tests (Vitest) | ✅ Done |
 | Zustand auth store | ✅ Done |
 | Axios client with auth token | ✅ Done |
 | Error boundary | ✅ Done |
@@ -21,13 +22,13 @@ A gamified task and learning app for children aged 8–12. This document covers 
 | Accept-invite page | ✅ Done |
 | Parent dashboard (placeholder) | ✅ Done |
 | Kid dashboard (placeholder) | ✅ Done |
-| Forgot password page | 🔲 Placeholder only |
+| Forgot password | — Not planned (no route) |
 | Character creation | 🔲 Placeholder only |
 | Profile pages | 🔲 Placeholder only |
 | Task system | 🔲 Not started |
 | Rewards system | 🔲 Not started |
 | Avatar builder | 🔲 Not started |
-| Google OAuth | 🔲 Not started |
+| Google sign-in (login, signup, accept-invite) | ✅ Done |
 
 ---
 
@@ -38,7 +39,7 @@ A gamified task and learning app for children aged 8–12. This document covers 
 | React 19 + TypeScript | UI framework |
 | Vite | Dev server + bundler |
 | Tailwind CSS v4 | Styling |
-| React Router v6 | Routing |
+| React Router v7 | Routing (layout routes + `<Outlet />`) |
 | Zustand | Global auth state |
 | TanStack Query | Data fetching + caching |
 | Axios | HTTP client |
@@ -67,6 +68,16 @@ make logs                  # backend logs
 make shell-front           # shell inside frontend container
 ```
 
+### Frontend tests
+
+```bash
+cd frontend
+npm run test:run    # single run (CI)
+npm test            # watch mode
+```
+
+---
+
 ### Adding new npm packages
 
 Packages install inside Docker — you can't just run `npm install` locally.
@@ -83,7 +94,14 @@ make fclean && make build-front && make up-front
 
 ## Auth flow
 
-Two account types — **parent** and **kid** — with separate API endpoints. Public routes use `GuestRoute` (redirects logged-in users away from `/login` and `/signup`).
+Two account types — **parent** and **kid** — with separate API endpoints.
+
+**Route groups in `App.tsx`:**
+- **`GuestRoute`** — `/`, `/login`, `/signup` (guests only; logged-in users go to their dashboard)
+- **Open** — `/accept-invite`, `/verify-email`, `/kid/verify-email` (usable while logged in or out)
+- **`ProtectedRoute role="kid"`** — `/dashboard`, `/character`, `/profile`
+- **`ProtectedRoute role="parent"`** — `/parent/dashboard`, `/parent/profile`
+- **`*`** — `NotFound` page
 
 ### Parent signup (password)
 1. `POST /auth/register/` → account created (email not verified yet)
@@ -114,7 +132,7 @@ Single form; frontend tries **parent** first, then **kid** (password and Google 
 - Kid success → `/dashboard`
 - Kid not active yet → waiting-for-parent screen
 
-Forgot password is not implemented yet (no link on login).
+Password reset is not planned for the current scope.
 
 ### Logout
 Clears Zustand persist → redirects to `/`.
@@ -142,6 +160,8 @@ Run with Docker stack up, mail catcher or backend logs for links, and `VITE_GOOG
 - [ ] Invite loading → success or error updates announced (`aria-live`)
 
 **Edge cases**
+- [ ] Unknown URL (e.g. `/nope`) → 404 page with “Back to home”
+- [ ] Hard-refresh `/login` or `/parent/dashboard` while logged in → brief spinner, no login/dashboard flash
 - [ ] Open invite link twice after accept → success + “Log in” if not signed in
 - [ ] Wrong invite token → error, no stale “return to invite” from verify
 - [ ] Signup: fill parent fields, switch to child → fields cleared
@@ -160,16 +180,20 @@ src/
 │   ├── session.ts      ← JWT → auth store (+ optional navigate)
 │   └── loginFlow.ts    ← parent-then-kid login (password + Google)
 ├── components/
+│   ├── AuthHydrationFallback.tsx  ← spinner while auth rehydrates
 │   ├── AuthMessageLayout.tsx
 │   ├── GoogleSignInSection.tsx
-│   ├── GuestRoute.tsx
+│   ├── GuestRoute.tsx             ← layout: guests only; renders <Outlet />
+│   ├── ProtectedRoute.tsx         ← layout: auth + role; renders <Outlet />
 │   ├── Button.tsx
 │   ├── Input.tsx
+│   ├── FormField.tsx
 │   ├── LanguageSwitcher.tsx
-│   ├── ProtectedRoute.tsx
 │   └── ErrorBoundary.tsx
 ├── hooks/
-│   └── useFormErrors.ts
+│   ├── useAuthHydrated.ts  ← true after Zustand rehydrates from localStorage
+│   ├── useFormErrors.ts
+│   └── usePageTitle.ts
 ├── i18n/
 │   ├── config.ts
 │   └── locales/
@@ -180,8 +204,10 @@ src/
 │   ├── Landing.tsx
 │   ├── Login.tsx
 │   ├── Signup.tsx
-│   ├── ForgotPassword.tsx
 │   ├── AcceptInvite.tsx
+│   ├── VerifyEmail.tsx
+│   ├── VerifyKidEmail.tsx
+│   ├── NotFound.tsx
 │   ├── ChildDashboard.tsx
 │   ├── ParentDashboard.tsx
 │   ├── CharacterCreation.tsx
@@ -189,7 +215,8 @@ src/
 │   └── ParentProfile.tsx
 ├── store/
 │   └── authStore.ts    ← Zustand store (persists to localStorage)
-├── App.tsx             ← router + RTL direction
+├── tests/              ← Vitest (api, auth, components, pages, utils)
+├── App.tsx             ← routes, startup token verify, `<html>` lang/dir
 ├── main.tsx            ← entry point, providers
 └── index.css           ← Tailwind + design tokens
 ```
@@ -271,7 +298,19 @@ t('greeting', { name: 'Ana' })  // → "Hello, Ana!"
 
 ## React Router
 
-Routes are defined in `src/App.tsx`. Public routes are open to everyone. Protected routes check authentication and role.
+Routes live in `src/App.tsx`. Guards are **layout routes**: they render `<Outlet />` for child routes instead of wrapping each page in JSX.
+
+`App` does **not** subscribe to the auth store (only reads `getState()` once for startup token verify). Guards and pages subscribe where needed.
+
+### Route map
+
+| Group | Paths | Guard |
+|-------|--------|--------|
+| Guest | `/`, `/login`, `/signup` | `GuestRoute` |
+| Open | `/accept-invite`, `/verify-email`, `/kid/verify-email` | — |
+| Kid | `/dashboard`, `/character`, `/profile` | `ProtectedRoute role="kid"` |
+| Parent | `/parent/dashboard`, `/parent/profile` | `ProtectedRoute role="parent"` |
+| Fallback | anything else | `NotFound` |
 
 ### Adding a new page
 
@@ -281,17 +320,19 @@ export default function MyPage() {
   return <div>My Page</div>
 }
 
-// 2. Add the route in App.tsx
+// 2. Public page (anyone)
 import MyPage from './pages/MyPage'
-
 <Route path="/my-page" element={<MyPage />} />
 
-// 3. For protected pages, wrap with ProtectedRoute
-<Route path="/my-page" element={
-  <ProtectedRoute role="kid">
-    <MyPage />
-  </ProtectedRoute>
-} />
+// 3. Guest-only (login/signup style)
+<Route element={<GuestRoute />}>
+  <Route path="/my-page" element={<MyPage />} />
+</Route>
+
+// 4. Kid-only (add inside existing kid group)
+<Route element={<ProtectedRoute role="kid" />}>
+  <Route path="/my-page" element={<MyPage />} />
+</Route>
 ```
 
 ### Navigating between pages
@@ -307,18 +348,29 @@ navigate('/dashboard')
 
 ---
 
-## Protected routes
+## Route guards
 
-`src/components/ProtectedRoute.tsx` guards pages that require login.
+`ProtectedRoute` and `GuestRoute` use `useAuthHydrated()` and show `AuthHydrationFallback` until Zustand has rehydrated from `localStorage` (avoids redirect flash on refresh).
 
-- Not logged in → redirects to `/login`
-- Wrong role → redirects to correct dashboard (`/dashboard` for kid, `/parent/dashboard` for parent)
+| Guard | When hydrated |
+|--------|----------------|
+| **GuestRoute** | Logged in → dashboard for role; else → `<Outlet />` (child page) |
+| **ProtectedRoute** | Not logged in → `/login`; wrong role → other dashboard; else → `<Outlet />` |
 
 ```tsx
-<ProtectedRoute role="kid">      // kid only
-<ProtectedRoute role="parent">   // parent only
-<ProtectedRoute>                 // any logged-in user
+// App.tsx — layout route pattern (not children props)
+<Route element={<GuestRoute />}>
+  <Route path="/login" element={<Login />} />
+</Route>
+
+<Route element={<ProtectedRoute role="kid" />}>
+  <Route path="/dashboard" element={<ChildDashboard />} />
+</Route>
 ```
+
+### RTL / `lang` on `<html>`
+
+`App.tsx` sets `document.documentElement.lang` and `.dir` in `useLayoutEffect` from `i18n` (no extra wrapper div). Field-level `dir="ltr"` is still used for email/username inputs in RTL locales.
 
 ---
 

@@ -5,20 +5,6 @@ import en from './locales/en.json'
 import ru from './locales/ru.json'
 import ar from './locales/ar.json'
 
-export const RTL_LANGUAGES = ['ar']
-
-/** Base language code (e.g. "ar-SA" → "ar"). */
-export function getLanguageBase(lang: string): string {
-  return lang.split('-')[0].toLowerCase()
-}
-
-export function matchesLanguageCode(activeLang: string, code: string): boolean {
-  return getLanguageBase(activeLang) === code
-}
-
-export function isRTLLanguage(lang: string): boolean {
-  return RTL_LANGUAGES.includes(getLanguageBase(lang))
-}
 
 i18n.use(initReactI18next).init({
   resources: {

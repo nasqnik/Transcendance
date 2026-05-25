@@ -14,24 +14,23 @@ vi.mock('../../components/AuthHydrationFallback', () => ({
 
 const mockUseAuthHydrated = vi.mocked(useAuthHydrated)
 
-function renderRoute(role?: 'parent' | 'kid') {
+function renderAppLikeRoutes(initialPath = '/') {
   return render(
-    <MemoryRouter>
+    <MemoryRouter initialEntries={[initialPath]}>
       <Routes>
-        <Route
-          path="/"
-          element={
-            <ProtectedRoute role={role}>
-              <div data-testid="protected-content">Protected</div>
-            </ProtectedRoute>
-          }
-        />
         <Route path="/login" element={<div data-testid="login-page">Login</div>} />
-        <Route path="/dashboard" element={<div data-testid="kid-dashboard">Kid Dashboard</div>} />
-        <Route
-          path="/parent/dashboard"
-          element={<div data-testid="parent-dashboard">Parent Dashboard</div>}
-        />
+        <Route element={<ProtectedRoute role="kid" />}>
+          <Route path="/dashboard" element={<div data-testid="kid-dashboard">Kid Dashboard</div>} />
+        </Route>
+        <Route element={<ProtectedRoute role="parent" />}>
+          <Route
+            path="/parent/dashboard"
+            element={<div data-testid="parent-dashboard">Parent Dashboard</div>}
+          />
+        </Route>
+        <Route element={<ProtectedRoute />}>
+          <Route path="/" element={<div data-testid="protected-content">Protected</div>} />
+        </Route>
       </Routes>
     </MemoryRouter>
   )
@@ -49,19 +48,19 @@ beforeEach(() => {
 describe('ProtectedRoute', () => {
   it('shows hydration fallback while useAuthHydrated returns false', () => {
     mockUseAuthHydrated.mockReturnValue(false)
-    renderRoute()
+    renderAppLikeRoutes()
     expect(screen.getByTestId('hydration-fallback')).toBeInTheDocument()
   })
 
   it('does not show protected content while hydrating', () => {
     mockUseAuthHydrated.mockReturnValue(false)
-    renderRoute()
+    renderAppLikeRoutes()
     expect(screen.queryByTestId('protected-content')).not.toBeInTheDocument()
   })
 
   it('redirects to /login when hydrated but not authenticated', () => {
     mockUseAuthHydrated.mockReturnValue(true)
-    renderRoute()
+    renderAppLikeRoutes()
     expect(screen.getByTestId('login-page')).toBeInTheDocument()
     expect(screen.queryByTestId('protected-content')).not.toBeInTheDocument()
   })
@@ -74,7 +73,7 @@ describe('ProtectedRoute', () => {
       refreshToken: 'ref',
       isAuthenticated: true,
     })
-    renderRoute('parent')
+    renderAppLikeRoutes()
     expect(screen.getByTestId('protected-content')).toBeInTheDocument()
   })
 
@@ -86,7 +85,7 @@ describe('ProtectedRoute', () => {
       refreshToken: 'ref',
       isAuthenticated: true,
     })
-    renderRoute('kid')
+    renderAppLikeRoutes()
     expect(screen.getByTestId('protected-content')).toBeInTheDocument()
   })
 
@@ -98,7 +97,7 @@ describe('ProtectedRoute', () => {
       refreshToken: 'ref',
       isAuthenticated: true,
     })
-    renderRoute('parent')
+    renderAppLikeRoutes('/parent/dashboard')
     expect(screen.getByTestId('kid-dashboard')).toBeInTheDocument()
     expect(screen.queryByTestId('protected-content')).not.toBeInTheDocument()
   })
@@ -111,7 +110,7 @@ describe('ProtectedRoute', () => {
       refreshToken: 'ref',
       isAuthenticated: true,
     })
-    renderRoute('kid')
+    renderAppLikeRoutes('/dashboard')
     expect(screen.getByTestId('parent-dashboard')).toBeInTheDocument()
     expect(screen.queryByTestId('protected-content')).not.toBeInTheDocument()
   })
@@ -124,7 +123,7 @@ describe('ProtectedRoute', () => {
       refreshToken: 'ref',
       isAuthenticated: true,
     })
-    renderRoute()
+    renderAppLikeRoutes()
     expect(screen.getByTestId('protected-content')).toBeInTheDocument()
   })
 })

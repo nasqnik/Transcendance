@@ -1,5 +1,4 @@
 import { useTranslation } from 'react-i18next'
-import { matchesLanguageCode } from '../i18n/config'
 
 const LANGUAGES = [
   { code: 'en', label: 'EN' },
@@ -18,7 +17,7 @@ export default function LanguageSwitcher() {
       className="flex gap-3"
     >
       {LANGUAGES.map(lang => {
-        const isActive = matchesLanguageCode(activeLang, lang.code)
+        const isActive = activeLang === lang.code
         return (
           <button
             key={lang.code}

@@ -4,7 +4,7 @@ import { persist } from 'zustand/middleware'
 export interface User {
   id: string
   username: string
-  email?: string      // parents have email, kids don't
+  email?: string     
   role: 'parent' | 'kid'
 }
 

@@ -1,15 +1,11 @@
-import { Navigate } from 'react-router-dom'
+import { Navigate, Outlet } from 'react-router-dom'
 import useAuthStore from '../store/authStore'
 import { dashboardPathForRole } from '../auth/session'
 import AuthHydrationFallback from './AuthHydrationFallback'
 import { useAuthHydrated } from '../hooks/useAuthHydrated'
 
-interface GuestRouteProps {
-  children: React.ReactNode
-}
-
 /** Public auth pages — redirect to dashboard if already logged in. */
-export default function GuestRoute({ children }: GuestRouteProps) {
+export default function GuestRoute() {
   const hydrated = useAuthHydrated()
   const { isAuthenticated, currentUser } = useAuthStore()
 
@@ -18,10 +14,8 @@ export default function GuestRoute({ children }: GuestRouteProps) {
   }
 
   if (isAuthenticated) {
-    return (
-      <Navigate to={dashboardPathForRole(currentUser?.role)} replace />
-    )
+    return <Navigate to={dashboardPathForRole(currentUser?.role)} replace />
   }
 
-  return <>{children}</>
+  return <Outlet />
 }

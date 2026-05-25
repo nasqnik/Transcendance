@@ -1,15 +1,14 @@
-import { Navigate } from 'react-router-dom'
+import { Navigate, Outlet } from 'react-router-dom'
 import useAuthStore from '../store/authStore'
 import { dashboardPathForRole } from '../auth/session'
 import AuthHydrationFallback from './AuthHydrationFallback'
 import { useAuthHydrated } from '../hooks/useAuthHydrated'
 
 interface ProtectedRouteProps {
-  children: React.ReactNode
   role?: 'parent' | 'kid'
 }
 
-export default function ProtectedRoute({ children, role }: ProtectedRouteProps) {
+export default function ProtectedRoute({ role }: ProtectedRouteProps) {
   const hydrated = useAuthHydrated()
   const { isAuthenticated, currentUser } = useAuthStore()
 
@@ -25,5 +24,5 @@ export default function ProtectedRoute({ children, role }: ProtectedRouteProps) 
     return <Navigate to={dashboardPathForRole(currentUser?.role)} replace />
   }
 
-  return <>{children}</>
+  return <Outlet />
 }
