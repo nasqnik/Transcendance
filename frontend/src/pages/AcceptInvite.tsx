@@ -20,7 +20,6 @@ import {
   isAccountNotFound,
   isEmailNotVerified,
   isInvitationAlreadyAccepted,
-  parseApiError,
   getApiErrorKey,
   getFieldErrors,
 } from '../api/errors'
@@ -31,11 +30,12 @@ import {
 } from '../utils/inviteToken'
 import { useAuthHydrated } from '../hooks/useAuthHydrated'
 import { useFormErrors } from '../hooks/useFormErrors'
+import { usePageTitle } from '../hooks/usePageTitle'
 import { emailsMatchIgnoreCase, isEmpty, validatePasswordField } from '../utils/validation'
 
 type PageState =
   | { status: 'loading' }
-  | { status: 'error'; message: string }
+  | { status: 'error'; messageKey: string }
   | { status: 'form'; invitation: InvitationDetails }
   | { status: 'wrong_account'; invitation: InvitationDetails; loggedInEmail: string }
   | { status: 'verify_email'; email: string }
@@ -45,13 +45,14 @@ type PageState =
 export default function AcceptInvite() {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  usePageTitle(`${t('invite.title')} — ${t('app.name')}`)
   const [searchParams] = useSearchParams()
   const hydrated = useAuthHydrated()
   const { isAuthenticated, currentUser, logout } = useAuthStore()
   const inviteToken = searchParams.get('token')
 
   const [state, setState] = useState<PageState>(() =>
-    inviteToken ? { status: 'loading' } : { status: 'error', message: t('invite.notFound') }
+    inviteToken ? { status: 'loading' } : { status: 'error', messageKey: 'invite.notFound' }
   )
 
   const [password, setPassword] = useState('')
@@ -89,9 +90,9 @@ export default function AcceptInvite() {
         if (invitation.status !== 'pending') {
           clearPendingInviteToken()
           if (invitation.status === 'expired') {
-            setState({ status: 'error', message: t('invite.expired') })
+            setState({ status: 'error', messageKey: 'invite.expired' })
           } else {
-            setState({ status: 'error', message: t('invite.notPending') })
+            setState({ status: 'error', messageKey: 'invite.notPending' })
           }
           return
         }
@@ -112,7 +113,7 @@ export default function AcceptInvite() {
           }
         } else if (isAuthenticated && currentUser?.role === 'kid') {
           clearPendingInviteToken()
-          setState({ status: 'error', message: t('invite.parentOnly') })
+          setState({ status: 'error', messageKey: 'invite.parentOnly' })
         } else {
           savePendingInviteToken(inviteToken)
           setState(prev => {
@@ -129,7 +130,7 @@ export default function AcceptInvite() {
       .catch(() => {
         if (!cancelled) {
           clearPendingInviteToken()
-          setState({ status: 'error', message: t('invite.notFound') })
+          setState({ status: 'error', messageKey: 'invite.notFound' })
         }
       })
 
@@ -152,7 +153,7 @@ export default function AcceptInvite() {
         setState({ status: 'success', kidName: invitation.kid_name })
         return
       }
-      setState({ status: 'error', message: parseApiError(err) })
+      setState({ status: 'error', messageKey: getApiErrorKey(err) })
     }
   }
 
@@ -255,8 +256,8 @@ export default function AcceptInvite() {
         headingId="invite-heading"
         icon="❌"
         title={t('invite.errorTitle')}
-        alertMessage={state.message}
-        statusMessage={state.message}
+        alertMessage={t(state.messageKey)}
+        statusMessage={t(state.messageKey)}
         titleSize="md"
       >
         {isAuthenticated && currentUser?.role === 'kid' ? (
