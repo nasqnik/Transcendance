@@ -26,6 +26,7 @@ export default function Login() {
 
   async function runLogin(credentials: Parameters<typeof attemptDualRoleLogin>[0]) {
     setErrorKey(null)
+    resetFieldErrors()
     setWaitingForParent(false)
     setIsLoading(true)
 
@@ -51,7 +52,6 @@ export default function Login() {
       setFieldErrors(errs)
       return
     }
-    resetFieldErrors()
     await runLogin({ type: 'password', identifier, password })
   }
 
@@ -105,6 +105,7 @@ export default function Login() {
           placeholder={t('auth.emailOrUsernameHint')}
           required
           autoComplete="username"
+          disabled={isLoading}
           error={fieldErrors.identifier}
           onChange={e => { setIdentifier(e.target.value); clearFieldError('identifier') }}
         />
@@ -116,6 +117,7 @@ export default function Login() {
           value={password}
           required
           autoComplete="current-password"
+          disabled={isLoading}
           error={fieldErrors.password}
           onChange={e => { setPassword(e.target.value); clearFieldError('password') }}
         />
@@ -128,7 +130,7 @@ export default function Login() {
       <GoogleSignInSection
         disabled={isLoading}
         onSuccess={credential => runLogin({ type: 'google', credential })}
-        onError={() => setErrorKey('errors.api.invalidGoogleToken')}
+        onError={() => { resetFieldErrors(); setErrorKey('errors.api.invalidGoogleToken') }}
       />
 
       <p className="font-body text-sm text-gray-700 text-center">
