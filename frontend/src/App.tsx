@@ -1,21 +1,29 @@
-import { useEffect } from 'react'
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { useEffect, useRef } from 'react'
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { getLanguageBase, isRTLLanguage } from './i18n/config'
 import useAuthStore from './store/authStore'
 import { verifyToken } from './api/auth'
 
 import ProtectedRoute from './components/ProtectedRoute'
-import Landing from './pages/Landing'
+import GuestRoute from './components/GuestRoute'
+import HomeRoute from './components/HomeRoute'
 import Login from './pages/Login'
 import Signup from './pages/Signup'
-import ForgotPassword from './pages/ForgotPassword'
 import AcceptInvite from './pages/AcceptInvite'
+import NotFound from './pages/NotFound'
+import VerifyEmail from './pages/VerifyEmail'
+import VerifyKidEmail from './pages/VerifyKidEmail'
 import ChildDashboard from './pages/ChildDashboard'
 import ParentDashboard from './pages/ParentDashboard'
 import CharacterCreation from './pages/CharacterCreation'
 import Profile from './pages/Profile'
 import ParentProfile from './pages/ParentProfile'
+
+function InviteLegacyRedirect() {
+  const { search } = useLocation()
+  return <Navigate to={`/accept-invite${search}`} replace />
+}
 
 export default function App() {
   const { i18n } = useTranslation()
@@ -23,15 +31,19 @@ export default function App() {
   const isRTL = isRTLLanguage(activeLang)
   const { token, logout } = useAuthStore()
 
-  // On startup — verify the stored token is still valid
-  // If not, log the user out so they don't see a broken logged-in state
+  // Capture the token that was in storage when the app first loaded.
+  // We only want to verify it once on startup — not on every subsequent
+  // auth state change — so we snapshot it into a ref immediately.
+  const startupTokenRef = useRef(token)
+
   useEffect(() => {
-    if (token) {
-      verifyToken(token).then(valid => {
+    const startupToken = startupTokenRef.current
+    if (startupToken) {
+      verifyToken(startupToken).then(valid => {
         if (!valid) logout()
       })
     }
-  }, [])
+  }, [logout])
 
   useEffect(() => {
     document.documentElement.lang = getLanguageBase(activeLang)
@@ -43,11 +55,13 @@ export default function App() {
       <BrowserRouter>
         <Routes>
           {/* Public */}
-          <Route path="/" element={<Landing />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/signup" element={<Signup />} />
-          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/" element={<HomeRoute />} />
+          <Route path="/login" element={<GuestRoute><Login /></GuestRoute>} />
+          <Route path="/signup" element={<GuestRoute><Signup /></GuestRoute>} />
           <Route path="/accept-invite" element={<AcceptInvite />} />
+          <Route path="/invite" element={<InviteLegacyRedirect />} />
+          <Route path="/verify-email" element={<VerifyEmail />} />
+          <Route path="/kid/verify-email" element={<VerifyKidEmail />} />
 
           {/* Child (protected) */}
           <Route path="/dashboard" element={
@@ -77,6 +91,8 @@ export default function App() {
               <ParentProfile />
             </ProtectedRoute>
           } />
+
+          <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
     </div>

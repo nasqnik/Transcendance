@@ -10,11 +10,16 @@
   "landing": {
     "tagline": "Learning made fun, one task at a time."
   },
+  "notFound": {
+    "title": "Page not found",
+    "message": "That link doesn't go anywhere. Head back home to continue.",
+    "backHome": "Back to home"
+  },
   "auth": {
     "email": "Email",
     "emailHint": "you@example.com",
     "emailOrUsername": "Email or username",
-    "emailOrUsernamHint": "you@example.com or your username",
+    "emailOrUsernameHint": "you@example.com or your username",
     "password": "Password",
     "name": "Full name",
     "login": "Log in",
@@ -32,9 +37,19 @@
     "hasAccount": "Already have an account?",
     "loggingIn": "Logging in...",
     "signingUp": "Signing up...",
+    "verifyYourEmail": "Check your email!",
+    "verifyEmailHint": "We sent a verification link to {{email}}. Open it to activate your account—you can log in after that.",
+    "verifyEmailAlready": "Already verified?",
+    "almostThere": "Almost there!",
+    "kidStep1": "1. Check your email ({{email}}) and click the verification link.",
+    "kidStep2": "2. Ask your parent to accept the invitation we sent to {{email}}.",
     "waitingForParent": "Check your parent's email!",
     "waitingForParentHint": "We sent an invite to {{email}}. Ask your parent to click the link in the email to activate your account.",
-    "backToHome": "Go to home"
+    "waitingForParentHintGeneric": "We sent an invitation to your parent. Ask them to check their email and accept the invite before you can log in.",
+    "backToHome": "Go to home",
+    "tryLoginAgain": "Try logging in again",
+    "completeProfile": "Complete your profile",
+    "back": "Back"
   },
   "dashboard": {
     "greeting": "Hey, {{name}}!",
@@ -80,7 +95,8 @@
     "goToSignup": "Sign up — create a new account",
     "goToLogin": "Log in to your account",
     "signupFormReady": "Sign up form is ready",
-    "loginFormReady": "Login form is ready"
+    "loginFormReady": "Login form is ready",
+    "loadingSession": "Loading your session..."
   },
   "inviteParent": {
     "title": "Invite a parent",
@@ -93,23 +109,48 @@
     "successHint": "Ask your parent to check their email.",
     "sendAnother": "Send another invitation"
   },
+  "verify": {
+    "loading": "Verifying your email...",
+    "invalidLink": "This verification link is invalid or has expired.",
+    "linkAlreadyUsed": "This link was already used. If you verified your email, continue with the next step below.",
+    "errorTitle": "Verification failed",
+    "successTitle": "Email verified!",
+    "parentSuccessHint": "Your account is active. You can now log in.",
+    "parentSuccessReturnInvite": "Your email is verified. Return to the invitation link to accept and activate your child's account.",
+    "kidSuccessHint": "Your email is verified. Now ask your parent to accept the invitation so you can log in.",
+    "allSetTitle": "You're all set!",
+    "allSetHint": "Your email is verified and your parent already accepted the invitation. You can log in now.",
+    "kidVerifiedParentSession": "The child's email is verified. You are still logged in as a parent on this device — log out so they can sign in here, or they can log in on another device."
+  },
   "invite": {
+    "errorTitle": "Invitation problem",
     "loading": "Loading invitation...",
     "notFound": "This invitation is invalid or has expired.",
+    "expired": "This invitation has expired.",
+    "notPending": "This invitation is no longer pending. It may already have been accepted.",
+    "alreadyAccepted": "This invitation was already accepted. You can log in or go to your dashboard.",
     "title": "You've been invited!",
     "subtitle": "{{name}} signed up on KiddoPath and listed you as their guardian.",
     "invitedAs": "Invitation sent to: {{email}}",
     "loginToAccept": "Log in to accept",
+    "verifyThenReturn": "We sent a verification link to {{email}}. Click it to confirm your email, then open the invitation link from your email again to accept.",
+    "returnToInvite": "Back to invitation",
+    "parentOnly": "Please log out of the child account and open this link as a parent.",
     "accept": "Accept invitation",
     "accepting": "Accepting...",
     "successTitle": "All set!",
     "successHint": "{{name}} can now log in to KiddoPath.",
     "goToDashboard": "Go to your dashboard",
-    "wrongAccount": "You're logged in as {{email}}, but this invitation was sent to {{inviteEmail}}. Please log out and try again with the correct account."
+    "wrongAccount": "You're logged in as {{email}}, but this invitation was sent to {{inviteEmail}}. Please log out and try again with the correct account.",
+    "googleEmailHint": "Use the Google account for {{email}}"
   },
   "errors": {
     "required": "This field is required",
     "invalidEmail": "Invalid email address",
+    "passwordMinLength": "Password must be at least {{min}} characters.",
+    "passwordEntirelyNumeric": "Password cannot be entirely numbers.",
+    "passwordTooSimilar": "Password cannot be the same as your username or email.",
+    "passwordTooCommon": "This password is too common. Choose a stronger one.",
     "boundary": {
       "title": "Something went wrong",
       "message": "Please try refreshing the page.",
@@ -140,7 +181,13 @@
       "invalidGoogleIssuer": "Google sign-in failed. Please try again.",
       "googleEmailNotVerified": "Please verify your Google email and try again.",
       "googleNoEmail": "Google account has no email.",
-      "googleAccountConflict": "This email is linked to a different Google account."
+      "googleAccountIsKid": "This Google account is linked to a child account. Try signing in with your password instead.",
+      "emailIsKidAccount": "This email is linked to a child account. Try signing in with your password instead.",
+      "googleAccountConflict": "This email is linked to a different Google account.",
+      "emailNotVerified": "Please verify your email before logging in.",
+      "invalidVerificationToken": "This verification link is invalid.",
+      "verificationExpired": "This verification link has expired. Please sign up again.",
+      "alreadyVerified": "Your email is already verified. You can log in."
     }
   }
 }

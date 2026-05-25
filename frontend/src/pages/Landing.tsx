@@ -2,12 +2,12 @@ import Button from '../components/Button'
 import LanguageSwitcher from '../components/LanguageSwitcher'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-
+import { usePageTitle } from '../hooks/usePageTitle'
 
 export default function Landing() {
-
   const navigate = useNavigate()
   const { t } = useTranslation()
+  usePageTitle(t('app.name'))
 
   return (
     <main aria-labelledby="landing-heading" className="flex flex-col items-center justify-center h-screen bg-primary-50 gap-6">

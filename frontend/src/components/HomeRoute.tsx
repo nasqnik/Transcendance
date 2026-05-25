@@ -3,13 +3,10 @@ import useAuthStore from '../store/authStore'
 import { dashboardPathForRole } from '../auth/session'
 import AuthHydrationFallback from './AuthHydrationFallback'
 import { useAuthHydrated } from '../hooks/useAuthHydrated'
+import Landing from '../pages/Landing'
 
-interface ProtectedRouteProps {
-  children: React.ReactNode
-  role?: 'parent' | 'kid'
-}
-
-export default function ProtectedRoute({ children, role }: ProtectedRouteProps) {
+/** `/` — landing for guests; send logged-in users to the right dashboard. */
+export default function HomeRoute() {
   const hydrated = useAuthHydrated()
   const { isAuthenticated, currentUser } = useAuthStore()
 
@@ -17,13 +14,9 @@ export default function ProtectedRoute({ children, role }: ProtectedRouteProps) 
     return <AuthHydrationFallback />
   }
 
-  if (!isAuthenticated) {
-    return <Navigate to="/login" replace />
-  }
-
-  if (role && currentUser?.role !== role) {
+  if (isAuthenticated) {
     return <Navigate to={dashboardPathForRole(currentUser?.role)} replace />
   }
 
-  return <>{children}</>
+  return <Landing />
 }

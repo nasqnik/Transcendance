@@ -8,6 +8,8 @@ interface InputProps {
   autoComplete?: string
   error?: string
   describedBy?: string
+  /** Force text direction — use "ltr" for fields that always contain ASCII (username, email identifier). */
+  dir?: 'ltr' | 'rtl'
   onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void
 }
 
@@ -21,6 +23,7 @@ export default function Input({
   autoComplete,
   error,
   describedBy,
+  dir,
   onChange,
 }: InputProps) {
   const hasError = Boolean(error)
@@ -30,6 +33,7 @@ export default function Input({
       id={id}
       name={name ?? id}
       type={type}
+      dir={dir ?? (type === 'email' ? 'ltr' : undefined)}
       value={value}
       placeholder={placeholder}
       onChange={onChange}
