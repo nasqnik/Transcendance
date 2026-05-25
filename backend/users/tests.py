@@ -65,6 +65,119 @@ class KidSignupTests(APITestCase):
         self.assertEqual(len(mail.outbox), 2)
         self.assertIn(str(invitation.token), mail.outbox[0].body)
 
+    def test_kid_signup_rejects_parent_email(self):
+        CustomUser.objects.create_user(
+            email="parent@example.com",
+            username="parent_one",
+            password="secure-pass-1",
+            role="parent",
+        )
+
+        response = self.client.post(
+            "/api/kids/signup/",
+            {
+                "name": "Alex",
+                "username": "alex_kid",
+                "email": "parent@example.com",
+                "password": "secure-pass-1",
+                "parent_email": "other@example.com",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertFalse(Kid.objects.filter(username="alex_kid").exists())
+
+    def test_kid_signup_rejects_parent_username(self):
+        CustomUser.objects.create_user(
+            email="parent@example.com",
+            username="shared_user",
+            password="secure-pass-1",
+            role="parent",
+        )
+
+        response = self.client.post(
+            "/api/kids/signup/",
+            {
+                "name": "Alex",
+                "username": "shared_user",
+                "email": "alex@example.com",
+                "password": "secure-pass-1",
+                "parent_email": "other@example.com",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertFalse(Kid.objects.filter(email="alex@example.com").exists())
+
+    def test_kid_signup_rejects_same_email_as_parent_email(self):
+        response = self.client.post(
+            "/api/kids/signup/",
+            {
+                "name": "Alex",
+                "username": "alex_same_email",
+                "email": "shared@example.com",
+                "password": "secure-pass-1",
+                "parent_email": "shared@example.com",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertFalse(Kid.objects.filter(username="alex_same_email").exists())
+
+    def test_kid_signup_rejects_parent_email_that_is_kid_account(self):
+        Kid.objects.create(
+            name="Other Kid",
+            username="other_kid",
+            email="kid.parent@example.com",
+            email_verified=True,
+            registration_status=Kid.RegistrationStatus.ACTIVE,
+        )
+
+        response = self.client.post(
+            "/api/kids/signup/",
+            {
+                "name": "Alex",
+                "username": "alex_kid3",
+                "email": "alex3@example.com",
+                "password": "secure-pass-1",
+                "parent_email": "kid.parent@example.com",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertFalse(Kid.objects.filter(username="alex_kid3").exists())
+
+    def test_kids_can_share_display_name(self):
+        self.client.post(
+            "/api/kids/signup/",
+            {
+                "name": "Alex",
+                "username": "alex_one",
+                "email": "alex1@example.com",
+                "password": "secure-pass-1",
+                "parent_email": "parent1@example.com",
+            },
+            format="json",
+        )
+        response = self.client.post(
+            "/api/kids/signup/",
+            {
+                "name": "Alex",
+                "username": "alex_two",
+                "email": "alex2@example.com",
+                "password": "secure-pass-1",
+                "parent_email": "parent2@example.com",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(Kid.objects.filter(name="Alex").count(), 2)
+
 
 @override_settings(
     EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend",
@@ -118,6 +231,50 @@ class ParentRegisterTests(APITestCase):
             format="json",
         )
         self.assertEqual(login.status_code, status.HTTP_200_OK)
+
+    def test_parent_register_rejects_kid_email(self):
+        Kid.objects.create(
+            name="Alex",
+            username="alex_kid",
+            email="kid@example.com",
+            email_verified=True,
+            registration_status=Kid.RegistrationStatus.AWAITING_PRIMARY_PARENT,
+        )
+
+        response = self.client.post(
+            "/api/auth/register/",
+            {
+                "email": "kid@example.com",
+                "username": "parent_one",
+                "password": "secure-pass-1",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(CustomUser.objects.filter(email="kid@example.com").count(), 0)
+
+    def test_parent_register_rejects_kid_username(self):
+        Kid.objects.create(
+            name="Alex",
+            username="kid_user",
+            email="kid@example.com",
+            email_verified=True,
+            registration_status=Kid.RegistrationStatus.AWAITING_PRIMARY_PARENT,
+        )
+
+        response = self.client.post(
+            "/api/auth/register/",
+            {
+                "email": "parent@example.com",
+                "username": "kid_user",
+                "password": "secure-pass-1",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertFalse(CustomUser.objects.filter(email="parent@example.com").exists())
 
 
 @override_settings(
@@ -268,6 +425,20 @@ class KidAuthAndSecondParentInviteTests(APITestCase):
         )
         self.assertEqual(response_with_email.status_code, status.HTTP_200_OK)
 
+    def test_kid_token_verify(self):
+        self._signup_and_accept_primary()
+        login = self.client.post(
+            "/api/auth/kid/token/",
+            {"emailOrUsername": "alex_kid2", "password": "secure-pass-1"},
+            format="json",
+        )
+        verify = self.client.post(
+            "/api/auth/kid/token/verify/",
+            {"token": login.data["access"]},
+            format="json",
+        )
+        self.assertEqual(verify.status_code, status.HTTP_200_OK)
+
     def test_kid_cannot_login_before_email_verified(self):
         self.client.post(
             "/api/kids/signup/",
@@ -387,6 +558,57 @@ class GoogleLoginTests(APITestCase):
         user = CustomUser.objects.get(email="existing@example.com")
         self.assertTrue(user.email_verified)
 
+    @patch("users.serializers.verify_google_id_token")
+    def test_google_login_rejects_kid_google_sub(self, mock_verify):
+        Kid.objects.create(
+            name="Google Kid",
+            username="google_kid",
+            email="kid.google@example.com",
+            google_sub="kid-google-sub-shared",
+            email_verified=True,
+            registration_status=Kid.RegistrationStatus.ACTIVE,
+        )
+        mock_verify.return_value = {
+            "sub": "kid-google-sub-shared",
+            "email": "kid.google@example.com",
+            "email_verified": True,
+            "iss": "accounts.google.com",
+        }
+
+        response = self.client.post(
+            "/api/auth/google/",
+            {"id_token": "fake-google-token"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertFalse(CustomUser.objects.filter(email="kid.google@example.com").exists())
+
+    @patch("users.serializers.verify_google_id_token")
+    def test_google_login_rejects_kid_email_without_google_sub(self, mock_verify):
+        Kid.objects.create(
+            name="Email Kid",
+            username="email_kid",
+            email="kid.only@example.com",
+            email_verified=True,
+            registration_status=Kid.RegistrationStatus.ACTIVE,
+        )
+        mock_verify.return_value = {
+            "sub": "new-google-sub",
+            "email": "kid.only@example.com",
+            "email_verified": True,
+            "iss": "accounts.google.com",
+        }
+
+        response = self.client.post(
+            "/api/auth/google/",
+            {"id_token": "fake-google-token"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertFalse(CustomUser.objects.filter(email="kid.only@example.com").exists())
+
 
 @override_settings(
     EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend",
@@ -418,6 +640,90 @@ class KidGoogleAuthTests(APITestCase):
         self.assertTrue(kid.email_verified)
         self.assertEqual(kid.google_sub, "kid-google-sub-1")
         self.assertEqual(len(mail.outbox), 1)
+
+    @patch("users.serializers.verify_google_id_token")
+    def test_kid_google_signup_rejects_parent_email(self, mock_verify):
+        CustomUser.objects.create_user(
+            email="parent@example.com",
+            username="parent_one",
+            password="secure-pass-1",
+            role="parent",
+        )
+        mock_verify.return_value = {
+            "sub": "kid-google-sub-parent-conflict",
+            "email": "parent@example.com",
+            "email_verified": True,
+            "iss": "accounts.google.com",
+        }
+
+        response = self.client.post(
+            "/api/kids/signup/google/",
+            {
+                "id_token": "fake-token",
+                "name": "Google Kid",
+                "username": "google_kid_conflict",
+                "parent_email": "other@example.com",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertFalse(Kid.objects.filter(username="google_kid_conflict").exists())
+
+    @patch("users.serializers.verify_google_id_token")
+    def test_kid_google_signup_rejects_parent_username(self, mock_verify):
+        CustomUser.objects.create_user(
+            email="parent@example.com",
+            username="shared_google_user",
+            password="secure-pass-1",
+            role="parent",
+        )
+        mock_verify.return_value = {
+            "sub": "kid-google-sub-username-conflict",
+            "email": "kid.google@example.com",
+            "email_verified": True,
+            "iss": "accounts.google.com",
+        }
+
+        response = self.client.post(
+            "/api/kids/signup/google/",
+            {
+                "id_token": "fake-token",
+                "name": "Google Kid",
+                "username": "shared_google_user",
+                "parent_email": "other@example.com",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertFalse(Kid.objects.filter(username="shared_google_user").exists())
+
+    @patch("users.serializers.verify_google_id_token")
+    def test_google_parent_signup_avoids_kid_username_collision(self, mock_verify):
+        Kid.objects.create(
+            name="Alex",
+            username="john",
+            email="kid@example.com",
+            email_verified=True,
+            registration_status=Kid.RegistrationStatus.ACTIVE,
+        )
+        mock_verify.return_value = {
+            "sub": "parent-google-sub-john",
+            "email": "john@example.com",
+            "email_verified": True,
+            "iss": "accounts.google.com",
+        }
+
+        response = self.client.post(
+            "/api/auth/google/",
+            {"id_token": "fake-google-token"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        user = CustomUser.objects.get(email="john@example.com")
+        self.assertNotEqual(user.username, "john")
 
     @patch("users.serializers.verify_google_id_token")
     def test_kid_google_login_after_parent_accepts(self, mock_verify):
