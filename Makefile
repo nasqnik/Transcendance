@@ -7,7 +7,7 @@ AUTH_SERVICE := auth-service
 TASK_SERVICE := task-service
 SERVICES := $(AUTH_SERVICE) $(TASK_SERVICE)
 
-.PHONY: all up down build build-all restart logs ps shell clean fclean ssl ssl-if-missing migrate init-dbs \
+.PHONY: all up down build build-all restart logs ps shell clean fclean ssl ssl-if-missing migrate init-dbs seed-dev \
         up-front build-front restart-front logs-front shell-front \
         logs-auth shell-auth logs-task shell-task restart-task
 
@@ -31,6 +31,10 @@ migrate:
 		echo "==> migrate $$svc"; \
 		docker compose exec $$svc python manage.py migrate; \
 	done
+
+seed-dev:
+	@echo "==> seed dev parent + kid (auth-service)"
+	@docker compose exec $(AUTH_SERVICE) python manage.py seed_dev_users
 
 ssl-if-missing:
 	@test -f $(SSL_CERT) && test -f $(SSL_KEY) || $(MAKE) ssl

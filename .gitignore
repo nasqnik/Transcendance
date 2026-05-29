@@ -11,3 +11,6 @@ security/ssl/server.crt
 __pycache__/
 *.py[cod]
 *$py.class
+
+# mariam test files
+/test

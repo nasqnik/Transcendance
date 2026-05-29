@@ -1,14 +1,17 @@
+from django.shortcuts import get_object_or_404
 from django.utils import timezone
+from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework import generics, status
-from rest_framework.exceptions import NotFound, ValidationError
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from common.actors import KidActor, ParentActor
+# permissions in settings.py
 from common.permissions import IsKid, IsParent
 
-from .models import Task, TaskCompletion
+from .models import Task, KidCategoryVisibility, TaskCompletion
 from .serializers import (
+    KidCategoryVisibilitySerializer,
     TaskCompletionCreateSerializer,
     TaskCompletionReviewSerializer,
     TaskCompletionSerializer,
@@ -17,61 +20,112 @@ from .serializers import (
 )
 
 
+@extend_schema_view(
+    get=extend_schema(
+        summary='List tasks',
+        description="Kid lists their own active tasks.",
+        responses=TaskSerializer(many=True),
+    ),
+    post=extend_schema(
+        summary='Create a task',
+        description=(
+            'Kid creates a task. The AI scores each category, writes a '
+            'summary, and sets xp_reward as the sum of the category points.'
+        ),
+        request=TaskCreateSerializer,
+        responses=TaskSerializer,
+    ),
+)
 class TaskListCreateView(generics.ListCreateAPIView):
     def get_queryset(self):
         user = self.request.user
         if isinstance(user, KidActor):
-            return Task.objects.filter(kid_id=user.kid_id, is_active=True)
-        if isinstance(user, ParentActor):
-            kid_id = self.request.query_params.get('kid_id')
-            qs = Task.objects.filter(is_active=True)
-            if kid_id:
-                qs = qs.filter(kid_id=kid_id)
-            return qs
+            return (
+                Task.objects
+                .filter(kid_id=user.kid_id, is_active=True)
+                .prefetch_related('category_rewards')
+            )
         return Task.objects.none()
 
+    def get_serializer_context(self):
+        # Fetch the kid's visibility once so review_mode doesn't query per task.
+        context = super().get_serializer_context()
+        user = self.request.user
+        if isinstance(user, KidActor):
+            context['kid_visibility'] = KidCategoryVisibility.objects.get_or_create(
+                kid_id=user.kid_id,
+            )[0]
+        return context
+
     def get_serializer_class(self):
+        # TODO: POST -> TaskCreateSerializer, GET -> TaskSerializer
         if self.request.method == 'POST':
             return TaskCreateSerializer
         return TaskSerializer
 
     def get_permissions(self):
         if self.request.method == 'POST':
-            return [IsParent()]
+            return [IsKid()]
         return super().get_permissions()
 
     def perform_create(self, serializer):
-        parent = self.request.user
-        serializer.save(created_by=parent.user_id)
+        kid_id = self.request.user.kid_id
+        serializer.save(kid_id=kid_id, created_by=kid_id)
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        out = TaskSerializer(serializer.instance)
+        return Response(out.data, status=status.HTTP_201_CREATED)
 
 
+@extend_schema_view(
+    get=extend_schema(
+        summary='Get one task',
+        description="Kid retrieves a single one of their own tasks by id.",
+        responses=TaskSerializer,
+    ),
+)
 class TaskDetailView(generics.RetrieveAPIView):
     serializer_class = TaskSerializer
+    permission_classes = [IsKid]
     lookup_url_kwarg = 'task_id'
 
     def get_queryset(self):
         user = self.request.user
         if isinstance(user, KidActor):
-            return Task.objects.filter(kid_id=user.kid_id, is_active=True)
-        if isinstance(user, ParentActor):
-            return Task.objects.filter(is_active=True)
+            return (
+                Task.objects
+                .filter(kid_id=user.kid_id, is_active=True)
+                .prefetch_related('category_rewards')
+            )
         return Task.objects.none()
 
 
+@extend_schema_view(
+    get=extend_schema(
+        summary='List completions',
+        description=(
+            "Kid lists their own completions. Parent lists completions for "
+            "the kids they guard."
+        ),
+        responses=TaskCompletionSerializer(many=True),
+    ),
+    post=extend_schema(
+        summary='Submit a completion',
+        description="Kid marks one of their tasks as completed (status pending).",
+        request=TaskCompletionCreateSerializer,
+        responses=TaskCompletionSerializer,
+    ),
+)
 class TaskCompletionListCreateView(generics.ListCreateAPIView):
     def get_queryset(self):
         user = self.request.user
-        qs = TaskCompletion.objects.select_related('task')
         if isinstance(user, KidActor):
-            return qs.filter(kid_id=user.kid_id)
+            return TaskCompletion.objects.filter(kid_id=user.kid_id)
         if isinstance(user, ParentActor):
-            kid_id = self.request.query_params.get('kid_id')
-            status_filter = self.request.query_params.get('status')
-            if kid_id:
-                qs = qs.filter(kid_id=kid_id)
-            if status_filter:
-                qs = qs.filter(status=status_filter)
-            return qs
+            return TaskCompletion.objects.filter(kid_id__in=user.kid_ids)
         return TaskCompletion.objects.none()
 
     def get_serializer_class(self):
@@ -87,48 +141,77 @@ class TaskCompletionListCreateView(generics.ListCreateAPIView):
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        kid = request.user
-        task_id = serializer.validated_data['task_id']
-
-        try:
-            task = Task.objects.get(pk=task_id, kid_id=kid.kid_id, is_active=True)
-        except Task.DoesNotExist as exc:
-            raise NotFound('Task not found.') from exc
-
-        if TaskCompletion.objects.filter(
-            task=task,
-            kid_id=kid.kid_id,
-            status=TaskCompletion.Status.PENDING,
-        ).exists():
-            raise ValidationError({'task_id': 'This task already has a pending completion.'})
-
-        completion = TaskCompletion.objects.create(task=task, kid_id=kid.kid_id)
-        output = TaskCompletionSerializer(completion)
-        return Response(output.data, status=status.HTTP_201_CREATED)
+        completion = serializer.save()
+        out = TaskCompletionSerializer(completion)
+        return Response(out.data, status=status.HTTP_201_CREATED)
 
 
+@extend_schema_view(
+    post=extend_schema(
+        summary='Review a completion',
+        description=(
+            "Parent confirms or rejects a completion for one of their kids. "
+            "Returns 404 if the completion does not belong to a guarded kid."
+        ),
+        request=TaskCompletionReviewSerializer,
+        responses=TaskCompletionSerializer,
+    ),
+)
 class TaskCompletionReviewView(APIView):
     permission_classes = [IsParent]
 
     def post(self, request, completion_id):
-        try:
-            completion = TaskCompletion.objects.select_related('task').get(pk=completion_id)
-        except TaskCompletion.DoesNotExist as exc:
-            raise NotFound('Completion not found.') from exc
-
-        if completion.status != TaskCompletion.Status.PENDING:
-            raise ValidationError({'detail': 'Completion is already reviewed.'})
+        completion = get_object_or_404(
+            TaskCompletion,
+            id=completion_id,
+            kid_id__in=request.user.kid_ids,
+        )
 
         serializer = TaskCompletionReviewSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        parent = request.user
         completion.status = serializer.validated_data['status']
-        completion.review_note = serializer.validated_data.get('review_note', '')
-        completion.reviewer_id = parent.user_id
+        completion.review_note = serializer.validated_data['review_note']
+        completion.reviewer_id = request.user.user_id
         completion.reviewed_at = timezone.now()
         completion.save(
             update_fields=['status', 'review_note', 'reviewer_id', 'reviewed_at'],
         )
-
         return Response(TaskCompletionSerializer(completion).data)
+
+
+@extend_schema_view(
+    get=extend_schema(
+        summary='Get category visibility settings',
+        description='Kid reads which task categories their parent can see.',
+        responses=KidCategoryVisibilitySerializer,
+    ),
+    put=extend_schema(
+        summary='Update category visibility settings',
+        description='Kid toggles which categories are visible to their parent.',
+        request=KidCategoryVisibilitySerializer,
+        responses=KidCategoryVisibilitySerializer,
+    ),
+)
+class KidCategoryVisibilityView(APIView):
+    permission_classes = [IsKid]
+
+    def _get_settings(self, request):
+        return KidCategoryVisibility.objects.get_or_create(
+            kid_id=request.user.kid_id,
+        )
+
+    def get(self, request):
+        settings, _ = self._get_settings(request)
+        serializer = KidCategoryVisibilitySerializer(settings)
+        return Response(serializer.data)
+
+    def put(self, request):
+        settings, _ = self._get_settings(request)
+        serializer = KidCategoryVisibilitySerializer(settings, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+

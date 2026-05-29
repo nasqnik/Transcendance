@@ -31,6 +31,19 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = 'core.urls'
 
+TEMPLATES = [
+    {
+        'BACKEND': 'django.template.backends.django.DjangoTemplates',
+        'DIRS': [],
+        'APP_DIRS': True,
+        'OPTIONS': {
+            'context_processors': [
+                'django.template.context_processors.request',
+            ],
+        },
+    },
+]
+
 WSGI_APPLICATION = 'core.wsgi.application'
 
 DATABASES = {
@@ -48,6 +61,10 @@ LANGUAGE_CODE = 'en-us'
 TIME_ZONE = 'UTC'
 USE_I18N = True
 USE_TZ = True
+
+OPENROUTER_API_KEY = os.getenv('OPENROUTER_API_KEY')
+if not OPENROUTER_API_KEY:
+    raise ImproperlyConfigured("OPENROUTER_API_KEY environment variable is required.")
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
@@ -71,6 +88,16 @@ SPECTACULAR_SETTINGS = {
     'DESCRIPTION': 'Tasks and completions for KiddoPath kids and parents.',
     'VERSION': '1.0.0',
     'SERVE_INCLUDE_SCHEMA': False,
+    'APPEND_COMPONENTS': {
+        'securitySchemes': {
+            'BearerAuth': {
+                'type': 'http',
+                'scheme': 'bearer',
+                'bearerFormat': 'JWT',
+            },
+        },
+    },
+    'SECURITY': [{'BearerAuth': []}],
 }
 
 SIMPLE_JWT = {

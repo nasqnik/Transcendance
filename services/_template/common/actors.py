@@ -21,6 +21,7 @@ class ParentActor:
     user_id: UUID
     username: str
     email: str
+    kid_ids: tuple[UUID, ...] = ()
 
     @property
     def pk(self):

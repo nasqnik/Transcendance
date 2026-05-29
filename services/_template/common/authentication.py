@@ -53,9 +53,13 @@ class ParentJWTAuthentication(JWTAuthentication):
         if not user_id:
             raise InvalidToken('Parent token missing user_id claim.')
 
+        raw_kid_ids = validated_token.get('kid_ids', [])
+        kid_ids = tuple(UUID(str(k)) for k in raw_kid_ids)
+
         actor = ParentActor(
             user_id=UUID(str(user_id)),
             username=str(validated_token.get('username', '')),
             email=str(validated_token.get('email', '')),
+            kid_ids=kid_ids,
         )
         return (actor, validated_token)
