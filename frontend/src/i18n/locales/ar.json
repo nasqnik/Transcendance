@@ -1,6 +1,7 @@
 {
   "app": {
-    "name": "KiddoPath"
+    "name": "KiddoPath",
+    "tagline": "كن رائعاً اليوم!"
   },
   "nav": {
     "login": "تسجيل الدخول",
@@ -68,7 +69,35 @@
     "goToLogin": "تسجيل الدخول إلى حسابك",
     "signupFormReady": "نموذج التسجيل جاهز",
     "loginFormReady": "نموذج تسجيل الدخول جاهز",
-    "loadingSession": "جاري تحميل جلستك..."
+    "loadingSession": "جاري تحميل جلستك...",
+    "mainNav": "التنقل الرئيسي"
+  },
+  "kidDash": {
+    "readyToLevel": "هل أنت مستعد للارتقاء بمستواك اليوم؟",
+    "streak": "أيام متتالية",
+    "points": "النقاط",
+    "level": "المستوى {{level}}",
+    "motivationHint": "أنت رائع! استمر هكذا!",
+    "todaysTasks": "مهام اليوم",
+    "viewAll": "عرض الكل",
+    "addTask": "+ إضافة مهمة جديدة",
+    "myStats": "إحصائياتي",
+    "details": "التفاصيل",
+    "inviteNow": "دعوة الآن",
+    "categories": {
+      "health": "الصحة",
+      "learning": "التعلم",
+      "responsibility": "المسؤولية",
+      "honesty": "الأمانة"
+    },
+    "nav": {
+      "home": "الرئيسية",
+      "tasks": "المهام",
+      "journey": "الرحلة",
+      "rewards": "المكافآت",
+      "friends": "الأصدقاء",
+      "progress": "التقدم"
+    }
   },
   "inviteParent": {
     "title": "دعوة ولي أمر",

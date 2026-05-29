@@ -1,6 +1,7 @@
 {
   "app": {
-    "name": "KiddoPath"
+    "name": "KiddoPath",
+    "tagline": "Be awesome today!"
   },
   "nav": {
     "login": "Log in",
@@ -68,7 +69,35 @@
     "goToLogin": "Log in to your account",
     "signupFormReady": "Sign up form is ready",
     "loginFormReady": "Login form is ready",
-    "loadingSession": "Loading your session..."
+    "loadingSession": "Loading your session...",
+    "mainNav": "Main navigation"
+  },
+  "kidDash": {
+    "readyToLevel": "Ready to level up today?",
+    "streak": "Day streak",
+    "points": "Points",
+    "level": "Level {{level}}",
+    "motivationHint": "You're doing amazing! Keep going!",
+    "todaysTasks": "Today's Tasks",
+    "viewAll": "View all",
+    "addTask": "+ Add New Task",
+    "myStats": "My Stats",
+    "details": "Details",
+    "inviteNow": "Invite Now",
+    "categories": {
+      "health": "Health",
+      "learning": "Learning",
+      "responsibility": "Responsibility",
+      "honesty": "Honesty"
+    },
+    "nav": {
+      "home": "Home",
+      "tasks": "Tasks",
+      "journey": "Journey",
+      "rewards": "Rewards",
+      "friends": "Friends",
+      "progress": "Progress"
+    }
   },
   "inviteParent": {
     "title": "Invite a parent",
