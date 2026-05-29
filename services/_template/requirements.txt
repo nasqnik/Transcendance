@@ -1,0 +1,5 @@
+Django
+psycopg2-binary
+djangorestframework>=3.15
+djangorestframework-simplejwt>=5.3
+drf-spectacular>=0.27

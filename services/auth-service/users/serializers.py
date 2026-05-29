@@ -78,6 +78,10 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         token["email"] = user.email
         token["username"] = user.username
         token["role"] = user.role
+        kid_ids = GuardianInvitation.objects.filter(
+            parent=user, status="accepted"
+        ).values_list("kid_id", flat=True)
+        token["kid_ids"] = [str(k) for k in kid_ids]
         return token
 
     def validate(self, attrs):

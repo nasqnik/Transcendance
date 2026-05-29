@@ -18,10 +18,10 @@ All API paths below are relative to this base, e.g. `POST https://localhost/api/
 
 The browser may need to trust the local self-signed cert (or use `-k` in curl).
 
-### Direct backend (optional, debugging only)
+### Direct auth-service (optional, debugging only)
 
 ```text
-http://localhost:8000/api/
+http://localhost:8001/api/
 ```
 
 ### Required headers
@@ -720,5 +720,5 @@ async function parentLogin(emailOrUsername, password) {
 
 ## Backend dev notes (optional)
 
-- Run tests: `docker compose exec backend python manage.py test users -v 2`
-- Sample invite email: `docker compose exec backend python manage.py send_sample_guardian_invite you@example.com`
+- Run tests: `docker compose exec auth-service python manage.py test users -v 2`
+- Sample invite email: `docker compose exec auth-service python manage.py send_sample_guardian_invite you@example.com`
