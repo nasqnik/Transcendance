@@ -80,6 +80,33 @@ services:
       APP_NAME: ${APP_NAME:-KiddoPath}
     command: python manage.py runserver 0.0.0.0:8000
 
+  gamification-service:
+    build:
+      context: ./services/gamification-service
+      dockerfile: Dockerfile
+      args:
+        DOCKER_UID: ${DOCKER_UID}
+        DOCKER_GID: ${DOCKER_GID}
+    container_name: gamification_service
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8003:8000"
+    volumes:
+      - ./services/gamification-service:/app
+    env_file:
+      - .env
+    environment:
+      DB_ENGINE: ${DB_ENGINE}
+      DB_NAME: ${GAMIFICATION_DB_NAME:-gamification_db}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT}
+      APP_NAME: ${APP_NAME:-KiddoPath}
+    command: python manage.py runserver 0.0.0.0:8000
+
   frontend:
     build:
       context: ./frontend

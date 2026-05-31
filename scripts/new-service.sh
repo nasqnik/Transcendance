@@ -54,6 +54,15 @@ container_name="$(echo "$slug" | tr '-' '_')_service"
 [[ -d "$TEMPLATE" ]] || die "template not found at ${TEMPLATE}"
 [[ ! -e "$service_dir" ]] || die "${service_dir} already exists"
 
+# Guard: refuse to scaffold into a trashed/temporary copy of the repo.
+case "$ROOT" in
+  */.local/share/Trash/* | */.Trash/* | /tmp/*)
+    die "Refusing to run: this script lives in a trashed/temporary copy (${ROOT}). cd into your real repo and run ./scripts/new-service.sh from there."
+    ;;
+esac
+
+echo "Scaffolding into: ${service_dir}"
+
 cp -a "$TEMPLATE" "$service_dir"
 
 find "$service_dir" -type f \( -name '*.py' -o -name '*.md' -o -name '*.txt' \) -print0 \
@@ -119,16 +128,19 @@ fi
 
 cat <<EOF
 
-6) Add Django app + routes:
+6) Build & start the service (required before the next step — exec needs a
+   running container):
+   docker compose up -d --build ${compose_service}
+
+7) Add Django app + routes:
    docker compose exec ${compose_service} python manage.py startapp <app_name>
    # Add to INSTALLED_APPS, include urls in core/urls.py
 
-7) Start and migrate:
-   docker compose up -d --build ${compose_service}
+8) Create the DB + migrate:
    make init-${slug}-db    # after adding Makefile target
    docker compose exec ${compose_service} python manage.py migrate
 
-8) Verify:
+9) Verify:
    curl -k https://localhost/api/health/   # if nginx routes health to this service
    # or: curl http://localhost:${port}/api/health/
 
