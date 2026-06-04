@@ -1,6 +1,7 @@
 {
   "app": {
-    "name": "KiddoPath"
+    "name": "KiddoPath",
+    "tagline": "Будь крутым сегодня!"
   },
   "nav": {
     "login": "Войти",
@@ -68,7 +69,39 @@
     "goToLogin": "Войти в аккаунт",
     "signupFormReady": "Форма регистрации готова",
     "loginFormReady": "Форма входа готова",
-    "loadingSession": "Загрузка сессии..."
+    "loadingSession": "Загрузка сессии...",
+    "mainNav": "Основная навигация"
+  },
+  "kidDash": {
+    "readyToLevel": "Готов подняться на новый уровень?",
+    "streak": "Дней подряд",
+    "points": "Очки",
+    "level": "Уровень {{level}}",
+    "motivationHint": "Ты молодец! Так держать!",
+    "todaysTasks": "Задачи на сегодня",
+    "viewAll": "Все",
+    "addTask": "+ Добавить задачу",
+    "noTasks": "Задач на сегодня нет",
+    "noTasksHint": "Ты или твой родитель ещё не добавили задачи.",
+    "allDone": "Всё готово на сегодня!",
+    "allDoneHint": "Отличная работа! Возвращайся завтра.",
+    "myStats": "Мои результаты",
+    "details": "Подробнее",
+    "inviteNow": "Пригласить",
+    "categories": {
+      "health": "Здоровье",
+      "learning": "Обучение",
+      "responsibility": "Ответственность",
+      "honesty": "Честность"
+    },
+    "nav": {
+      "home": "Главная",
+      "tasks": "Задачи",
+      "journey": "Путешествие",
+      "rewards": "Награды",
+      "friends": "Друзья",
+      "progress": "Прогресс"
+    }
   },
   "inviteParent": {
     "title": "Пригласить родителя",

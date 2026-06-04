@@ -21,11 +21,16 @@ A gamified task and learning app for children aged 8–12. This document covers 
 | Signup page (parent + kid) | ✅ Done |
 | Accept-invite page | ✅ Done |
 | Parent dashboard (placeholder) | ✅ Done |
-| Kid dashboard (placeholder) | ✅ Done |
+| Kid dashboard — layout + components | ✅ Done |
+| Kid dashboard — TodaysTasks (UI + mock data) | ✅ Done |
+| Kid dashboard — TasksAll modal (view all) | ✅ Done |
+| Kid dashboard — KidStats panel | ✅ Done |
+| Kid dashboard — KidUserMenu + invite parent flow | ✅ Done |
 | Forgot password | — Not planned (no route) |
 | Character creation | 🔲 Placeholder only |
 | Profile pages | 🔲 Placeholder only |
-| Task system | 🔲 Not started |
+| Task system — wire to API | 🔲 Not started |
+| Task system — Add New Task | 🔲 Not started |
 | Rewards system | 🔲 Not started |
 | Avatar builder | 🔲 Not started |
 | Google sign-in (login, signup, accept-invite) | ✅ Done |
@@ -189,7 +194,16 @@ src/
 │   ├── Input.tsx
 │   ├── FormField.tsx
 │   ├── LanguageSwitcher.tsx
-│   └── ErrorBoundary.tsx
+│   ├── ErrorBoundary.tsx
+│   └── kid/                       ← all kid dashboard components
+│       ├── KidSidebar.tsx         ← left nav (logo + Home link)
+│       ├── KidTopbar.tsx          ← greeting header + user menu
+│       ├── KidUserMenu.tsx        ← avatar dropdown (logout + invite parent flow)
+│       ├── TodaysTasks.tsx        ← task list with pending/done/empty states
+│       ├── TasksAll.tsx           ← "View all" modal overlay
+│       └── KidStats.tsx           ← stats panel (mock data)
+├── constants/
+│   └── categories.ts              ← TaskCategory type + CATEGORY_STYLE map
 ├── hooks/
 │   ├── useAuthHydrated.ts  ← true after Zustand rehydrates from localStorage
 │   ├── useFormErrors.ts

@@ -192,6 +192,7 @@ class KidSignupSerializer(serializers.Serializer):
                 data["invite_url"] = build_guardian_invite_url(invitation.token)
                 data["invite_token"] = str(invitation.token)
             if instance.email_verification_token:
+                data["verify_token"] = str(instance.email_verification_token)
                 data["verify_url"] = build_kid_verify_email_url(
                     instance.email_verification_token
                 )
@@ -244,6 +245,7 @@ class ParentRegisterSerializer(serializers.ModelSerializer):
             "message": "Check your email to verify your account.",
         }
         if settings.DEBUG and instance.email_verification_token:
+            data["verify_token"] = str(instance.email_verification_token)
             data["verify_url"] = build_parent_verify_email_url(
                 instance.email_verification_token
             )
