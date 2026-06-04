@@ -13,7 +13,9 @@ import AcceptInvite from './pages/AcceptInvite'
 import NotFound from './pages/NotFound'
 import VerifyEmail from './pages/VerifyEmail'
 import VerifyKidEmail from './pages/VerifyKidEmail'
+import KidLayout from './components/kid/KidLayout'
 import ChildDashboard from './pages/ChildDashboard'
+import KidSettings from './pages/KidSettings'
 import ParentDashboard from './pages/ParentDashboard'
 import CharacterCreation from './pages/CharacterCreation'
 import Profile from './pages/Profile'
@@ -61,7 +63,10 @@ export default function App() {
 
         {/* Child (protected) */}
         <Route element={<ProtectedRoute role="kid" />}>
-          <Route path="/dashboard" element={<ChildDashboard />} />
+          <Route element={<KidLayout />}>
+            <Route path="/dashboard" element={<ChildDashboard />} />
+            <Route path="/settings" element={<KidSettings />} />
+          </Route>
           <Route path="/character" element={<CharacterCreation />} />
           <Route path="/profile" element={<Profile />} />
         </Route>
