@@ -21,16 +21,22 @@ A gamified task and learning app for children aged 8–12. This document covers 
 | Signup page (parent + kid) | ✅ Done |
 | Accept-invite page | ✅ Done |
 | Parent dashboard (placeholder) | ✅ Done |
-| Kid dashboard — layout + components | ✅ Done |
-| Kid dashboard — TodaysTasks (UI + mock data) | ✅ Done |
-| Kid dashboard — TasksAll modal (view all) | ✅ Done |
-| Kid dashboard — KidStats panel | ✅ Done |
-| Kid dashboard — KidUserMenu + invite parent flow | ✅ Done |
+| Kid dashboard — layout + shared KidLayout | ✅ Done |
+| Kid dashboard — TodaysTasks wired to API | ✅ Done |
+| Kid dashboard — Add New Task (AI classification) | ✅ Done |
+| Kid dashboard — TasksAll modal + status + expand | ✅ Done |
+| Kid dashboard — rejected tasks with parent note | ✅ Done |
+| Kid dashboard — KidStats — XP bars + levels | ✅ Done |
+| Kid dashboard — StatsLog (points history) | ✅ Done |
+| Kid dashboard — Level-up celebration modal | ✅ Done |
+| Kid dashboard — Overall level + streak in topbar | ✅ Done |
+| Kid dashboard — KidSettings (category visibility) | ✅ Done |
+| Kid dashboard — Invite parent (moved to settings) | ✅ Done |
 | Forgot password | — Not planned (no route) |
 | Character creation | 🔲 Placeholder only |
 | Profile pages | 🔲 Placeholder only |
-| Task system — wire to API | 🔲 Not started |
-| Task system — Add New Task | 🔲 Not started |
+| Parent dashboard — pending approvals | 🔲 Not started |
+| Username / avatar change | 🔲 Needs backend |
 | Rewards system | 🔲 Not started |
 | Avatar builder | 🔲 Not started |
 | Google sign-in (login, signup, accept-invite) | ✅ Done |
@@ -184,27 +190,40 @@ src/
 ├── auth/
 │   ├── session.ts      ← JWT → auth store (+ optional navigate)
 │   └── loginFlow.ts    ← parent-then-kid login (password + Google)
+├── api/
+│   ├── client.ts       ← axios instance (auto-attaches token)
+│   ├── auth.ts         ← all auth API functions
+│   ├── errors.ts       ← API error key parsing
+│   └── tasks.ts        ← task + completion + category settings API
 ├── components/
-│   ├── AuthHydrationFallback.tsx  ← spinner while auth rehydrates
+│   ├── AuthHydrationFallback.tsx
 │   ├── AuthMessageLayout.tsx
 │   ├── GoogleSignInSection.tsx
-│   ├── GuestRoute.tsx             ← layout: guests only; renders <Outlet />
-│   ├── ProtectedRoute.tsx         ← layout: auth + role; renders <Outlet />
+│   ├── GuestRoute.tsx
+│   ├── ProtectedRoute.tsx
 │   ├── Button.tsx
 │   ├── Input.tsx
 │   ├── FormField.tsx
 │   ├── LanguageSwitcher.tsx
 │   ├── ErrorBoundary.tsx
-│   └── kid/                       ← all kid dashboard components
-│       ├── KidSidebar.tsx         ← left nav (logo + Home link)
-│       ├── KidTopbar.tsx          ← greeting header + user menu
-│       ├── KidUserMenu.tsx        ← avatar dropdown (logout + invite parent flow)
-│       ├── TodaysTasks.tsx        ← task list with pending/done/empty states
-│       ├── TasksAll.tsx           ← "View all" modal overlay
-│       └── KidStats.tsx           ← stats panel (mock data)
+│   └── kid/                        ← all kid dashboard components
+│       ├── KidLayout.tsx           ← shared sidebar + topbar shell (Outlet)
+│       ├── KidSidebar.tsx          ← left nav
+│       ├── KidTopbar.tsx           ← greeting + overall level + streak + user menu
+│       ├── KidUserMenu.tsx         ← avatar dropdown (logout)
+│       ├── TodaysTasks.tsx         ← task list; pending/done/rejected/empty states
+│       ├── TasksAll.tsx            ← "View all" modal; status icons + expand
+│       ├── AddTaskModal.tsx        ← add task form with AI classification
+│       ├── KidStats.tsx            ← XP bars per category + level badges
+│       ├── StatsLog.tsx            ← points history modal
+│       └── LevelUpModal.tsx        ← level-up celebration overlay
 ├── constants/
-│   └── categories.ts              ← TaskCategory type + CATEGORY_STYLE map
+│   └── categories.ts               ← TaskCategory, Task, Completion types + CATEGORY_STYLE
 ├── hooks/
+│   ├── useAuthHydrated.ts
+│   ├── useFormErrors.ts
+│   ├── useKidLevel.ts              ← XP/level/streak computed from TanStack cache
+│   └── usePageTitle.ts
 │   ├── useAuthHydrated.ts  ← true after Zustand rehydrates from localStorage
 │   ├── useFormErrors.ts
 │   └── usePageTitle.ts
@@ -222,8 +241,9 @@ src/
 │   ├── VerifyEmail.tsx
 │   ├── VerifyKidEmail.tsx
 │   ├── NotFound.tsx
-│   ├── ChildDashboard.tsx
-│   ├── ParentDashboard.tsx
+│   ├── ChildDashboard.tsx   ← main content only; layout via KidLayout
+│   ├── KidSettings.tsx      ← category visibility + invite parent
+│   ├── ParentDashboard.tsx  ← placeholder
 │   ├── CharacterCreation.tsx
 │   ├── Profile.tsx
 │   └── ParentProfile.tsx
