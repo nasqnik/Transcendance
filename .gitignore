@@ -11,3 +11,13 @@ security/ssl/server.crt
 __pycache__/
 *.py[cod]
 *$py.class
+
+# mariam test files
+/test
+
+*.sqlite3
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
