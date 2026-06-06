@@ -10,6 +10,7 @@ from common.actors import KidActor, ParentActor
 from common.permissions import IsKid, IsParent
 
 from .models import Task, KidCategoryVisibility, TaskCompletion
+from .notifications import push_completion_confirmed
 from .serializers import (
     KidCategoryVisibilitySerializer,
     TaskCompletionCreateSerializer,
@@ -170,13 +171,25 @@ class TaskCompletionReviewView(APIView):
         serializer = TaskCompletionReviewSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        completion.status = serializer.validated_data['status']
+        new_status = serializer.validated_data['status']
+        # Only push when the completion actually transitions into confirmed,
+        # so re-confirming an already-confirmed completion won't push twice.
+        became_confirmed = (
+            new_status == TaskCompletion.Status.CONFIRMED
+            and completion.status != TaskCompletion.Status.CONFIRMED
+        )
+
+        completion.status = new_status
         completion.review_note = serializer.validated_data['review_note']
         completion.reviewer_id = request.user.user_id
         completion.reviewed_at = timezone.now()
         completion.save(
             update_fields=['status', 'review_note', 'reviewer_id', 'reviewed_at'],
         )
+
+        if became_confirmed:
+            push_completion_confirmed(completion)
+
         return Response(TaskCompletionSerializer(completion).data)
 
 
