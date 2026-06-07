@@ -12,7 +12,7 @@ if not SECRET_KEY:
 
 DEBUG = True
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'task-service']
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'gamification-service']
 
 INSTALLED_APPS = [
     'django.contrib.contenttypes',
@@ -20,8 +20,8 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework_simplejwt',
     'drf_spectacular',
+    'gamification',
     'common',
-    'tasks',
 ]
 
 MIDDLEWARE = [
@@ -49,7 +49,7 @@ WSGI_APPLICATION = 'core.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': os.getenv('DB_ENGINE', 'django.db.backends.postgresql'),
-        'NAME': os.getenv('DB_NAME', 'task_db'),
+        'NAME': os.getenv('DB_NAME', 'gamification_db'),
         'USER': os.getenv('DB_USER', 'transcendence'),
         'PASSWORD': os.getenv('DB_PASSWORD', 'transcendence'),
         'HOST': os.getenv('DB_HOST', 'db'),
@@ -61,10 +61,6 @@ LANGUAGE_CODE = 'en-us'
 TIME_ZONE = 'UTC'
 USE_I18N = True
 USE_TZ = True
-
-OPENROUTER_API_KEY = os.getenv('OPENROUTER_API_KEY')
-if not OPENROUTER_API_KEY:
-    raise ImproperlyConfigured("OPENROUTER_API_KEY environment variable is required.")
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
@@ -84,8 +80,8 @@ REST_FRAMEWORK = {
 }
 
 SPECTACULAR_SETTINGS = {
-    'TITLE': f'{APP_NAME} Task API',
-    'DESCRIPTION': 'Tasks and completions for KiddoPath kids and parents.',
+    'TITLE': f'{APP_NAME} Gamification API',
+    'DESCRIPTION': 'Gamification service for KiddoPath.',
     'VERSION': '1.0.0',
     'SERVE_INCLUDE_SCHEMA': False,
     'APPEND_COMPONENTS': {
@@ -109,9 +105,11 @@ SIMPLE_JWT = {
     'AUTH_HEADER_TYPES': ('Bearer',),
 }
 
-GAMIFICATION_INTERNAL_URL = os.getenv('GAMIFICATION_INTERNAL_URL')
-if not GAMIFICATION_INTERNAL_URL:
-    raise ImproperlyConfigured("GAMIFICATION_INTERNAL_URL environment variable is required.")
+
+STAT_XP_PER_LEVEL = 100
+OVERALL_XP_PER_STAT_LEVEL = 50
+MAIN_XP_PER_LEVEL = 200
+COINS_PER_MAIN_LEVEL = 25
 
 INTERNAL_SERVICE_TOKEN = os.getenv('INTERNAL_SERVICE_TOKEN')
 if not INTERNAL_SERVICE_TOKEN:

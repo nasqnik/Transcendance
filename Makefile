@@ -5,7 +5,8 @@ SSL_CERT := security/ssl/server.crt
 SSL_KEY := security/ssl/server.key
 AUTH_SERVICE := auth-service
 TASK_SERVICE := task-service
-SERVICES := $(AUTH_SERVICE) $(TASK_SERVICE)
+GAMIFICATION_SERVICE := gamification-service
+SERVICES := $(AUTH_SERVICE) $(TASK_SERVICE) $(GAMIFICATION_SERVICE)
 
 .PHONY: all up down build build-all restart logs ps shell clean fclean ssl ssl-if-missing migrate init-dbs seed-dev \
         up-front build-front restart-front logs-front shell-front \
@@ -16,7 +17,7 @@ all: ssl-if-missing
 	$(MAKE) init-dbs
 	$(MAKE) migrate
 
-init-dbs: init-auth-db init-task-db
+init-dbs: init-auth-db init-task-db init-gamification-db
 
 init-auth-db:
 	docker compose exec db sh -c 'psql -U "$$POSTGRES_USER" -d "$$POSTGRES_DB" -tc "SELECT 1 FROM pg_database WHERE datname='"'"'auth_db'"'"'" | grep -q 1 \
@@ -25,6 +26,10 @@ init-auth-db:
 init-task-db:
 	docker compose exec db sh -c 'psql -U "$$POSTGRES_USER" -d "$$POSTGRES_DB" -tc "SELECT 1 FROM pg_database WHERE datname='"'"'task_db'"'"'" | grep -q 1 \
 		|| psql -U "$$POSTGRES_USER" -d "$$POSTGRES_DB" -c "CREATE DATABASE task_db;"'
+
+init-gamification-db:
+	docker compose exec db sh -c 'psql -U "$$POSTGRES_USER" -d "$$POSTGRES_DB" -tc "SELECT 1 FROM pg_database WHERE datname='"'"'gamification_db'"'"'" | grep -q 1 \
+		|| psql -U "$$POSTGRES_USER" -d "$$POSTGRES_DB" -c "CREATE DATABASE gamification_db;"'
 
 migrate:
 	@for svc in $(SERVICES); do \

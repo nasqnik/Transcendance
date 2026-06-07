@@ -3,6 +3,7 @@ from django.contrib.auth.models import AbstractUser, UserManager
 from django.contrib.auth.hashers import check_password, make_password
 from uuid import uuid4
 
+# In Django, a model is a Python class that represents a database table
 
 class CustomUserManager(UserManager):
     def create_superuser(self, username, email=None, password=None, **extra_fields):

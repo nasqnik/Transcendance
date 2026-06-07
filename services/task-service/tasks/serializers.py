@@ -3,7 +3,9 @@ from rest_framework import serializers
 from rest_framework.exceptions import APIException
 
 from .ai_evaluation import apply_classification, classify_task
+from .ai_evaluation.apply import CATEGORIES
 from .models import Task, TaskCategoryReward, TaskCompletion, KidCategoryVisibility
+from .notifications import push_completion_confirmed
 
 
 # Review modes returned to the client so the UI knows how to handle submission.
@@ -81,6 +83,53 @@ class TaskCreateSerializer(serializers.ModelSerializer):
         return task
 
 
+class TaskUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Task
+        fields = ('title', 'description', 'due_date')
+
+    def validate_title(self, value):
+        if not value.strip():
+            raise serializers.ValidationError('Title cannot be empty.')
+        return value
+
+    @transaction.atomic
+    def update(self, instance, validated_data):
+        # Only the AI-relevant fields (title/description) should trigger a
+        # re-classification; editing just the due_date must not re-score the task.
+        text_changed = (
+            ('title' in validated_data and validated_data['title'] != instance.title)
+            or (
+                'description' in validated_data
+                and validated_data['description'] != instance.description
+            )
+        )
+
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+
+        if text_changed:
+            self._reclassify(instance)
+
+        return instance
+
+    def _reclassify(self, task):
+        text = f'{task.title}\n{task.description}'.strip()
+        try:
+            result = classify_task(text)
+        except RuntimeError as exc:
+            raise APIException(str(exc)) from exc
+
+        # apply_classification creates fresh reward rows and there is a unique
+        # (task, category) constraint, so clear the old ones first.
+        task.category_rewards.all().delete()
+        apply_classification(task, result)
+
+        task.xp_reward = sum(int(result.get(category, 0)) for category in CATEGORIES)
+        task.save(update_fields=['xp_reward'])
+
+
 
 # ModelSerializer is used to serialize and deserialize the model instance.
 
@@ -123,11 +172,17 @@ class TaskCompletionCreateSerializer(serializers.ModelSerializer):
         task = validated_data['task']
 
         new_status = self._resolve_status(task, kid_id, send_for_review)
-        return TaskCompletion.objects.create(
+        completion = TaskCompletion.objects.create(
             kid_id=kid_id,
             status=new_status,
             **validated_data,
         )
+
+        # Auto-confirmed completions skip parent review, so push here too.
+        if new_status == TaskCompletion.Status.CONFIRMED:
+            push_completion_confirmed(completion)
+
+        return completion
 
     def _resolve_status(self, task, kid_id, send_for_review):
         mode = compute_review_mode(task, kid_id)
