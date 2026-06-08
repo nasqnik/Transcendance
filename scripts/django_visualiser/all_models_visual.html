@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Django Models — All Django Models</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:        #F8F7F4;
+    --surface:   #FFFFFF;
+    --surface2:  #F1EFE8;
+    --border:    rgba(0,0,0,0.10);
+    --border2:   rgba(0,0,0,0.18);
+    --text:      #1A1A18;
+    --muted:     #6B6B68;
+    --faint:     #9B9B98;
+    --mono:      'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+    --sans:      'Inter', system-ui, sans-serif;
+    --radius:    10px;
+    --radius-sm: 5px;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg:       #1A1A18;
+      --surface:  #242422;
+      --surface2: #2C2C2A;
+      --border:   rgba(255,255,255,0.10);
+      --border2:  rgba(255,255,255,0.18);
+      --text:     #F0EDE8;
+      --muted:    #A0A09C;
+      --faint:    #686864;
+    }
+  }
+
+  body {
+    font-family: var(--sans);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 0;
+  }
+
+  /* ── Header ── */
+  header {
+    background: var(--surface);
+    border-bottom: 0.5px solid var(--border);
+    padding: 18px 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .header-left h1 {
+    font-size: 17px;
+    font-weight: 600;
+    letter-spacing: -0.3px;
+  }
+  .header-left p {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .tab-btn {
+    background: transparent;
+    border: 0.5px solid var(--border2);
+    border-radius: var(--radius-sm);
+    padding: 6px 14px;
+    font-size: 13px;
+    cursor: pointer;
+    color: var(--muted);
+    font-family: var(--sans);
+    transition: all 0.12s;
+  }
+  .tab-btn:hover { background: var(--surface2); color: var(--text); }
+  .tab-btn.active {
+    background: var(--text);
+    color: var(--bg);
+    border-color: transparent;
+    font-weight: 500;
+  }
+
+  /* ── Stats bar ── */
+  .stats-bar {
+    background: var(--surface);
+    border-bottom: 0.5px solid var(--border);
+    padding: 10px 32px;
+    display: flex;
+    gap: 28px;
+  }
+  .stat { display: flex; align-items: baseline; gap: 6px; }
+  .stat-val { font-size: 20px; font-weight: 600; }
+  .stat-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+
+  /* ── Main ── */
+  main { padding: 28px 32px; }
+
+  /* ── Tables view ── */
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+    gap: 18px;
+  }
+
+  .model-card {
+    background: var(--surface);
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    transition: box-shadow 0.15s;
+  }
+  .model-card:hover { box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+
+  .card-header {
+    background: #1e1e1c;
+    padding: 11px 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .card-avatar {
+    width: 30px; height: 30px;
+    border-radius: 6px;
+    background: rgba(255,255,255,0.12);
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--mono);
+    font-size: 13px; font-weight: 700;
+    color: white;
+    flex-shrink: 0;
+  }
+  .card-title { font-family: var(--mono); font-size: 14px; font-weight: 600; color: white; }
+  .card-meta { font-size: 11px; color: rgba(255,255,255,0.45); margin-top: 1px; }
+  .card-badge {
+    margin-left: auto;
+    font-size: 10px; padding: 2px 7px;
+    border-radius: 4px;
+    background: rgba(255,255,255,0.12);
+    color: rgba(255,255,255,0.7);
+    white-space: nowrap;
+  }
+
+  table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+  col.c-name  { width: 42%; }
+  col.c-type  { width: 32%; }
+  col.c-attrs { width: 26%; }
+
+  thead tr { background: var(--surface2); }
+  thead th {
+    padding: 5px 12px;
+    font-size: 10px; font-weight: 500;
+    color: var(--faint);
+    text-align: left;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  thead th:not(:first-child) { padding-left: 8px; }
+
+  tbody tr { border-bottom: 0.5px solid var(--border); }
+  tbody tr:last-child { border-bottom: none; }
+
+  td { padding: 6px 12px; font-size: 13px; vertical-align: middle; }
+  td:not(:first-child) { padding-left: 8px; }
+
+  .fname {
+    font-family: var(--mono);
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .fname.is-rel { font-weight: 600; }
+  .fname-related {
+    display: block;
+    font-size: 10px;
+    color: var(--muted);
+    margin-top: 1px;
+    font-family: var(--mono);
+  }
+
+  .type-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 500;
+    white-space: nowrap;
+    border: 0.5px solid transparent;
+  }
+
+  .attrs { display: flex; gap: 3px; flex-wrap: wrap; }
+  .attr-pill {
+    font-size: 10px;
+    padding: 1px 5px;
+    border-radius: 3px;
+    background: var(--surface2);
+    color: var(--muted);
+    border: 0.5px solid var(--border);
+    white-space: nowrap;
+  }
+
+  .section-divider td {
+    background: var(--surface2);
+    color: var(--faint);
+    font-size: 10px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 4px 12px;
+  }
+
+  /* ── Relationships view ── */
+  .rel-container { max-width: 700px; }
+  .rel-summary {
+    font-size: 13px;
+    color: var(--muted);
+    margin-bottom: 14px;
+  }
+  .rel-list { display: flex; flex-direction: column; gap: 8px; }
+  .rel-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 14px;
+    background: var(--surface);
+    border: 0.5px solid var(--border);
+    border-radius: 8px;
+    font-size: 13px;
+  }
+  .rel-model { font-family: var(--mono); font-weight: 600; }
+  .rel-field { font-size: 11px; color: var(--muted); font-family: var(--mono); }
+  .rel-arrow { color: var(--faint); font-size: 16px; }
+
+  .legend {
+    margin-top: 22px;
+    padding: 14px 16px;
+    background: var(--surface);
+    border: 0.5px solid var(--border);
+    border-radius: 8px;
+  }
+  .legend-title {
+    font-size: 10px;
+    font-weight: 500;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 10px;
+  }
+  .legend-items { display: flex; gap: 16px; flex-wrap: wrap; }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+
+  /* ── Hidden ── */
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <h1>&#128202; Django Model Visualizer</h1>
+    <p>/home/meid/Desktop/backend_as_microservices/services/gamification-service/gamification/models.py · /home/meid/Desktop/backend_as_microservices/services/task-service/tasks/models.py · /home/meid/Desktop/backend_as_microservices/services/auth-service/users/models.py</p>
+  </div>
+  <div class="header-right">
+    <button class="tab-btn active" onclick="showTab('tables')" id="btn-tables">Model Tables</button>
+    <button class="tab-btn"        onclick="showTab('rels')"   id="btn-rels">Relationships</button>
+  </div>
+</header>
+
+<div class="stats-bar">
+  <div class="stat">
+    <span class="stat-val">7</span>
+    <span class="stat-label">Models</span>
+  </div>
+  <div class="stat">
+    <span class="stat-val">51</span>
+    <span class="stat-label">Fields</span>
+  </div>
+  <div class="stat">
+    <span class="stat-val">1</span>
+    <span class="stat-label">Relationships</span>
+  </div>
+</div>
+
+<main>
+  <!-- Tables view -->
+  <div id="view-tables" class="grid">
+    
+<div class="model-card">
+  <div class="card-header">
+    <div class="card-avatar">K</div>
+    <div>
+      <div class="card-title">KidProfile</div>
+      <div class="card-meta">7 fields · gamification/models.py</div>
+    </div>
+    
+  </div>
+  <table>
+    <colgroup>
+      <col class="c-name"><col class="c-type"><col class="c-attrs">
+    </colgroup>
+    <thead>
+      <tr>
+        <th>Field</th><th>Type</th><th>Attrs</th>
+      </tr>
+    </thead>
+    <tbody><tr><td><span class="fname">id</span></td><td><span class="type-badge" style="background:#EEEDFE;color:#3C3489;border-color:#534AB7">UUIDField</span></td><td><div class="attrs"><span class="attr-pill">PK</span></div></td></tr><tr><td><span class="fname">kid_id</span></td><td><span class="type-badge" style="background:#EEEDFE;color:#3C3489;border-color:#534AB7">UUIDField</span></td><td><div class="attrs"><span class="attr-pill">unique</span></div></td></tr><tr><td><span class="fname">main_level</span></td><td><span class="type-badge" style="background:#EEEDFE;color:#3C3489;border-color:#534AB7">PositiveIntegerField</span></td><td><div class="attrs"></div></td></tr><tr><td><span class="fname">overall_xp</span></td><td><span class="type-badge" style="background:#EEEDFE;color:#3C3489;border-color:#534AB7">PositiveIntegerField</span></td><td><div class="attrs"></div></td></tr><tr><td><span class="fname">coins</span></td><td><span class="type-badge" style="background:#EEEDFE;color:#3C3489;border-color:#534AB7">PositiveIntegerField</span></td><td><div class="attrs"></div></td></tr><tr><td><span class="fname">created_at</span></td><td><span class="type-badge" style="background:#FBEAF0;color:#72243E;border-color:#993556">DateTimeField</span></td><td><div class="attrs"><span class="attr-pill">auto_add</span></div></td></tr><tr><td><span class="fname">updated_at</span></td><td><span class="type-badge" style="background:#FBEAF0;color:#72243E;border-color:#993556">DateTimeField</span></td><td><div class="attrs"><span class="attr-pill">auto_now</span></div></td></tr></tbody>
+  </table>
+</div>
+
+<div class="model-card">
+  <div class="card-header">
+    <div class="card-avatar">K</div>
+    <div>
+      <div class="card-title">KidStat</div>
+      <div class="card-meta">5 fields · gamification/models.py</div>
+    </div>
+    
+  </div>
+  <table>
+    <colgroup>
+      <col class="c-name"><col class="c-type"><col class="c-attrs">
+    </colgroup>
+    <thead>
+      <tr>
+        <th>Field</th><th>Type</th><th>Attrs</th>
+      </tr>
+    </thead>
+    <tbody><tr><td><span class="fname">id</span></td><td><span class="type-badge" style="background:#EEEDFE;color:#3C3489;border-color:#534AB7">UUIDField</span></td><td><div class="attrs"><span class="attr-pill">PK</span></div></td></tr><tr><td><span class="fname">kid_id</span></td><td><span class="type-badge" style="background:#EEEDFE;color:#3C3489;border-color:#534AB7">UUIDField</span></td><td><div class="attrs"></div></td></tr><tr><td><span class="fname">category</span></td><td><span class="type-badge" style="background:#EAF3DE;color:#27500A;border-color:#3B6D11">CharField</span></td><td><div class="attrs"><span class="attr-pill">max=255</span></div></td></tr><tr><td><span class="fname">level</span></td><td><span class="type-badge" style="background:#EEEDFE;color:#3C3489;border-color:#534AB7">PositiveIntegerField</span></td><td><div class="attrs"></div></td></tr><tr><td><span class="fname">xp_percent</span></td><td><span class="type-badge" style="background:#EEEDFE;color:#3C3489;border-color:#534AB7">IntegerField</span></td><td><div class="attrs"></div></td></tr></tbody>
+  </table>
+</div>
+
+<div class="model-card">
+  <div class="card-header">
+    <div class="card-avatar">C</div>
+    <div>
+      <div class="card-title">CompletionEvent</div>
+      <div class="card-meta">4 fields · gamification/models.py</div>
+    </div>
+    
+  </div>
+  <table>
+    <colgroup>
+      <col class="c-name"><col class="c-type"><col class="c-attrs">
+    </colgroup>
+    <thead>
+      <tr>
+        <th>Field</th><th>Type</th><th>Attrs</th>
+      </tr>
+    </thead>
+    <tbody><tr><td><span class="fname">completion_id</span></td><td><span class="type-badge" style="background:#EEEDFE;color:#3C3489;border-color:#534AB7">UUIDField</span></td><td><div class="attrs"><span class="attr-pill">PK</span></div></td></tr><tr><td><span class="fname">kid_id</span></td><td><span class="type-badge" style="background:#EEEDFE;color:#3C3489;border-color:#534AB7">UUIDField</span></td><td><div class="attrs"></div></td></tr><tr><td><span class="fname">payload</span></td><td><span class="type-badge" style="background:#FAEEDA;color:#633806;border-color:#854F0B">JSONField</span></td><td><div class="attrs"></div></td></tr><tr><td><span class="fname">processed_at</span></td><td><span class="type-badge" style="background:#FBEAF0;color:#72243E;border-color:#993556">DateTimeField</span></td><td><div class="attrs"><span class="attr-pill">auto_add</span></div></td></tr></tbody>
+  </table>
+</div>
+
+<div class="model-card">
+  <div class="card-header">
+    <div class="card-avatar">T</div>
+    <div>
+      <div class="card-title">Task</div>
+      <div class="card-meta">12 fields · tasks/models.py</div>
+    </div>
+    
+  </div>
+  <table>
+    <colgroup>
+      <col class="c-name"><col class="c-type"><col class="c-attrs">
+    </colgroup>
+    <thead>
+      <tr>
+        <th>Field</th><th>Type</th><th>Attrs</th>
+      </tr>
+    </thead>
+    <tbody><tr><td><span class="fname">id</span></td><td><span class="type-badge" style="background:#EEEDFE;color:#3C3489;border-color:#534AB7">UUIDField</span></td><td><div class="attrs"><span class="attr-pill">PK</span></div></td></tr><tr><td><span class="fname">kid_id</span></td><td><span class="type-badge" style="background:#EEEDFE;color:#3C3489;border-color:#534AB7">UUIDField</span></td><td><div class="attrs"></div></td></tr><tr><td><span class="fname">created_by</span></td><td><span class="type-badge" style="background:#EEEDFE;color:#3C3489;border-color:#534AB7">UUIDField</span></td><td><div class="attrs"></div></td></tr><tr><td><span class="fname">title</span></td><td><span class="type-badge" style="background:#EAF3DE;color:#27500A;border-color:#3B6D11">TextField</span></td><td><div class="attrs"></div></td></tr><tr><td><span class="fname">description</span></td><td><span class="type-badge" style="background:#EAF3DE;color:#27500A;border-color:#3B6D11">TextField</span></td><td><div class="attrs"><span class="attr-pill">blank</span></div></td></tr><tr><td><span class="fname">xp_reward</span></td><td><span class="type-badge" style="background:#EEEDFE;color:#3C3489;border-color:#534AB7">PositiveIntegerField</span></td><td><div class="attrs"></div></td></tr><tr><td><span class="fname">ai_evaluated</span></td><td><span class="type-badge" style="background:#FAEEDA;color:#633806;border-color:#854F0B">BooleanField</span></td><td><div class="attrs"></div></td></tr><tr><td><span class="fname">ai_summary</span></td><td><span class="type-badge" style="background:#EAF3DE;color:#27500A;border-color:#3B6D11">TextField</span></td><td><div class="attrs"><span class="attr-pill">blank</span></div></td></tr><tr><td><span class="fname">is_active</span></td><td><span class="type-badge" style="background:#FAEEDA;color:#633806;border-color:#854F0B">BooleanField</span></td><td><div class="attrs"></div></td></tr><tr><td><span class="fname">due_date</span></td><td><span class="type-badge" style="background:#FBEAF0;color:#72243E;border-color:#993556">DateField</span></td><td><div class="attrs"><span class="attr-pill">null</span><span class="attr-pill">blank</span></div></td></tr><tr><td><span class="fname">created_at</span></td><td><span class="type-badge" style="background:#FBEAF0;color:#72243E;border-color:#993556">DateTimeField</span></td><td><div class="attrs"><span class="attr-pill">auto_add</span></div></td></tr><tr><td><span class="fname">should_be_reviewed</span></td><td><span class="type-badge" style="background:#FAEEDA;color:#633806;border-color:#854F0B">BooleanField</span></td><td><div class="attrs"></div></td></tr></tbody>
+  </table>
+</div>
+
+<div class="model-card">
+  <div class="card-header">
+    <div class="card-avatar">T</div>
+    <div>
+      <div class="card-title">TaskCategoryReward</div>
+      <div class="card-meta">5 fields · tasks/models.py</div>
+    </div>
+    <span class="card-badge">1 rel</span>
+  </div>
+  <table>
+    <colgroup>
+      <col class="c-name"><col class="c-type"><col class="c-attrs">
+    </colgroup>
+    <thead>
+      <tr>
+        <th>Field</th><th>Type</th><th>Attrs</th>
+      </tr>
+    </thead>
+    <tbody><tr><td><span class="fname">id</span></td><td><span class="type-badge" style="background:#EEEDFE;color:#3C3489;border-color:#534AB7">UUIDField</span></td><td><div class="attrs"><span class="attr-pill">PK</span></div></td></tr><tr><td><span class="fname">category</span></td><td><span class="type-badge" style="background:#EAF3DE;color:#27500A;border-color:#3B6D11">CharField</span></td><td><div class="attrs"><span class="attr-pill">max=255</span></div></td></tr><tr><td><span class="fname">points_value</span></td><td><span class="type-badge" style="background:#EEEDFE;color:#3C3489;border-color:#534AB7">PositiveIntegerField</span></td><td><div class="attrs"></div></td></tr><tr><td><span class="fname">created_at</span></td><td><span class="type-badge" style="background:#FBEAF0;color:#72243E;border-color:#993556">DateTimeField</span></td><td><div class="attrs"><span class="attr-pill">auto_add</span></div></td></tr><tr class="section-divider"><td colspan="3">Relationships</td></tr><tr><td><span class="fname is-rel">task<span class="fname-related">→ Task</span></span></td><td><span class="type-badge" style="background:#FAECE7;color:#712B13;border-color:#993C1D">ForeignKey</span></td><td><div class="attrs"></div></td></tr></tbody>
+  </table>
+</div>
+
+<div class="model-card">
+  <div class="card-header">
+    <div class="card-avatar">K</div>
+    <div>
+      <div class="card-title">KidCategoryVisibility</div>
+      <div class="card-meta">5 fields · tasks/models.py</div>
+    </div>
+    
+  </div>
+  <table>
+    <colgroup>
+      <col class="c-name"><col class="c-type"><col class="c-attrs">
+    </colgroup>
+    <thead>
+      <tr>
+        <th>Field</th><th>Type</th><th>Attrs</th>
+      </tr>
+    </thead>
+    <tbody><tr><td><span class="fname">kid_id</span></td><td><span class="type-badge" style="background:#EEEDFE;color:#3C3489;border-color:#534AB7">UUIDField</span></td><td><div class="attrs"><span class="attr-pill">unique</span></div></td></tr><tr><td><span class="fname">show_health</span></td><td><span class="type-badge" style="background:#FAEEDA;color:#633806;border-color:#854F0B">BooleanField</span></td><td><div class="attrs"></div></td></tr><tr><td><span class="fname">show_learning</span></td><td><span class="type-badge" style="background:#FAEEDA;color:#633806;border-color:#854F0B">BooleanField</span></td><td><div class="attrs"></div></td></tr><tr><td><span class="fname">show_responsibility</span></td><td><span class="type-badge" style="background:#FAEEDA;color:#633806;border-color:#854F0B">BooleanField</span></td><td><div class="attrs"></div></td></tr><tr><td><span class="fname">show_creativity</span></td><td><span class="type-badge" style="background:#FAEEDA;color:#633806;border-color:#854F0B">BooleanField</span></td><td><div class="attrs"></div></td></tr></tbody>
+  </table>
+</div>
+
+<div class="model-card">
+  <div class="card-header">
+    <div class="card-avatar">G</div>
+    <div>
+      <div class="card-title">GuardianInvitation</div>
+      <div class="card-meta">13 fields · users/models.py</div>
+    </div>
+    <span class="card-badge">2 rel</span>
+  </div>
+  <table>
+    <colgroup>
+      <col class="c-name"><col class="c-type"><col class="c-attrs">
+    </colgroup>
+    <thead>
+      <tr>
+        <th>Field</th><th>Type</th><th>Attrs</th>
+      </tr>
+    </thead>
+    <tbody><tr><td><span class="fname">id</span></td><td><span class="type-badge" style="background:#EEEDFE;color:#3C3489;border-color:#534AB7">UUIDField</span></td><td><div class="attrs"><span class="attr-pill">PK</span></div></td></tr><tr><td><span class="fname">invite_email</span></td><td><span class="type-badge" style="background:#E1F5EE;color:#085041;border-color:#0F6E56">EmailField</span></td><td><div class="attrs"></div></td></tr><tr><td><span class="fname">invited_username_hint</span></td><td><span class="type-badge" style="background:#EAF3DE;color:#27500A;border-color:#3B6D11">CharField</span></td><td><div class="attrs"><span class="attr-pill">blank</span><span class="attr-pill">max=150</span></div></td></tr><tr><td><span class="fname">role</span></td><td><span class="type-badge" style="background:#EAF3DE;color:#27500A;border-color:#3B6D11">CharField</span></td><td><div class="attrs"><span class="attr-pill">max=20</span></div></td></tr><tr><td><span class="fname">status</span></td><td><span class="type-badge" style="background:#EAF3DE;color:#27500A;border-color:#3B6D11">CharField</span></td><td><div class="attrs"><span class="attr-pill">max=20</span></div></td></tr><tr><td><span class="fname">token</span></td><td><span class="type-badge" style="background:#EEEDFE;color:#3C3489;border-color:#534AB7">UUIDField</span></td><td><div class="attrs"><span class="attr-pill">unique</span></div></td></tr><tr><td><span class="fname">created_by_kid</span></td><td><span class="type-badge" style="background:#FAEEDA;color:#633806;border-color:#854F0B">BooleanField</span></td><td><div class="attrs"></div></td></tr><tr><td><span class="fname">sent_at</span></td><td><span class="type-badge" style="background:#FBEAF0;color:#72243E;border-color:#993556">DateTimeField</span></td><td><div class="attrs"><span class="attr-pill">null</span><span class="attr-pill">blank</span></div></td></tr><tr><td><span class="fname">expires_at</span></td><td><span class="type-badge" style="background:#FBEAF0;color:#72243E;border-color:#993556">DateTimeField</span></td><td><div class="attrs"><span class="attr-pill">null</span><span class="attr-pill">blank</span></div></td></tr><tr><td><span class="fname">created_at</span></td><td><span class="type-badge" style="background:#FBEAF0;color:#72243E;border-color:#993556">DateTimeField</span></td><td><div class="attrs"><span class="attr-pill">auto_add</span></div></td></tr><tr><td><span class="fname">responded_at</span></td><td><span class="type-badge" style="background:#FBEAF0;color:#72243E;border-color:#993556">DateTimeField</span></td><td><div class="attrs"><span class="attr-pill">null</span><span class="attr-pill">blank</span></div></td></tr><tr class="section-divider"><td colspan="3">Relationships</td></tr><tr><td><span class="fname is-rel">kid</span></td><td><span class="type-badge" style="background:#FAECE7;color:#712B13;border-color:#993C1D">ForeignKey</span></td><td><div class="attrs"></div></td></tr><tr><td><span class="fname is-rel">parent</span></td><td><span class="type-badge" style="background:#FAECE7;color:#712B13;border-color:#993C1D">ForeignKey</span></td><td><div class="attrs"><span class="attr-pill">null</span><span class="attr-pill">blank</span></div></td></tr></tbody>
+  </table>
+</div>
+  </div>
+
+  <!-- Relationships view -->
+  <div id="view-rels" class="rel-container hidden">
+    <p class="rel-summary">1 relationship(s) detected across 7 models</p>
+    <div class="rel-list">
+      <div class="rel-row"><span class="rel-model">TaskCategoryReward</span><span class="rel-field">·task·</span><span class="type-badge" style="background:#FAECE7;color:#712B13;border-color:#993C1D;font-size:10px;font-weight:600">FK</span><span class="rel-arrow">→</span><span class="rel-model">Task</span></div>
+    </div>
+    <div class="legend">
+      <div class="legend-title">Legend</div>
+      <div class="legend-items">
+        <div class="legend-item">
+          <span class="type-badge" style="background:#FAECE7;color:#712B13;border-color:#993C1D">FK</span>
+          ForeignKey
+        </div>
+        <div class="legend-item">
+          <span class="type-badge" style="background:#EEEDFE;color:#3C3489;border-color:#534AB7">M2M</span>
+          ManyToManyField
+        </div>
+        <div class="legend-item">
+          <span class="type-badge" style="background:#E1F5EE;color:#085041;border-color:#0F6E56">1:1</span>
+          OneToOneField
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+function showTab(tab) {
+  document.getElementById('view-tables').classList.toggle('hidden', tab !== 'tables');
+  document.getElementById('view-rels').classList.toggle('hidden',   tab !== 'rels');
+  document.getElementById('btn-tables').classList.toggle('active',  tab === 'tables');
+  document.getElementById('btn-rels').classList.toggle('active',    tab === 'rels');
+}
+</script>
+</body>
+</html>
