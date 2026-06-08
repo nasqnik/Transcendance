@@ -43,3 +43,14 @@ export async function createTask(data: CreateTaskInput): Promise<Task> {
   const res = await client.post('/task/tasks/', data)
   return res.data
 }
+
+export interface UpdateTaskInput {
+  title?: string
+  description?: string
+  due_date?: string | null
+}
+
+export async function updateTask(taskId: string, data: UpdateTaskInput): Promise<Task> {
+  const res = await client.patch(`/task/tasks/${taskId}/`, data)
+  return res.data
+}

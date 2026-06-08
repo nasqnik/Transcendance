@@ -1,20 +1,35 @@
 import { useQuery } from '@tanstack/react-query'
 import { type TaskCategory } from '../constants/categories'
-import { getTasks, getCompletions, type Completion } from '../api/tasks'
+import { getCompletions, type Completion } from '../api/tasks'
+import {
+  getGamificationStats,
+  getGamificationProfile,
+} from '../api/gamification'
 
-const CATEGORIES: TaskCategory[] = ['health', 'learning', 'responsibility', 'creativity']
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface KidLevelData {
-  /** XP earned per category (confirmed completions only) */
-  earned: Record<TaskCategory, number>
-  /** Sum of all category XP */
-  totalXp: number
-  /** Overall level: floor(totalXp / 100) + 1 */
+  /** Per-category level + XP progress, straight from the backend */
+  stats: Record<TaskCategory, { level: number; xp_percent: number }>
+  /** Kid's overall (main) level */
   level: number
-  /** XP progress within current overall level (0–99) */
+  /** Progress within current main level as 0-100 percentage */
   progress: number
-  /** Consecutive days (ending today) with at least one confirmed completion */
+  /** Coins earned */
+  coins: number
+  /** Consecutive days (ending today, UTC) with ≥1 confirmed completion */
   streak: number
+}
+
+const CATEGORIES: TaskCategory[] = ['health', 'learning', 'responsibility', 'creativity']
+const MAIN_XP_PER_LEVEL = 200  // must match backend MAIN_XP_PER_LEVEL setting
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function emptyStats(): Record<TaskCategory, { level: number; xp_percent: number }> {
+  return Object.fromEntries(
+    CATEGORIES.map(cat => [cat, { level: 0, xp_percent: 0 }])
+  ) as Record<TaskCategory, { level: number; xp_percent: number }>
 }
 
 function computeStreak(completions: Completion[]): number {
@@ -34,30 +49,28 @@ function computeStreak(completions: Completion[]): number {
   return streak
 }
 
+// ─── Hook ─────────────────────────────────────────────────────────────────────
+
 export function useKidLevel(): KidLevelData {
-  // Both served from TanStack Query cache — no extra requests
-  const { data: tasks       = [] } = useQuery({ queryKey: ['tasks'],       queryFn: getTasks })
-  const { data: completions = [] } = useQuery({ queryKey: ['completions'], queryFn: getCompletions })
+  // Gamification service — real server-side XP/level data
+  const { data: rawStats   = [] } = useQuery({ queryKey: ['gamificationStats'],   queryFn: getGamificationStats })
+  const { data: profile         } = useQuery({ queryKey: ['gamificationProfile'], queryFn: getGamificationProfile })
+  // Completions already cached by TodaysTasks — no extra request
+  const { data: completions = [] } = useQuery({ queryKey: ['completions'],        queryFn: getCompletions })
 
-  const taskMap = new Map(tasks.map(t => [t.id, t]))
-
-  const earned = Object.fromEntries(
-    CATEGORIES.map(cat => [cat, 0])
-  ) as Record<TaskCategory, number>
-
-  for (const completion of completions) {
-    if (completion.status !== 'confirmed') continue
-    const task = taskMap.get(completion.task)
-    if (!task) continue
-    for (const reward of task.category_rewards) {
-      if (reward.category in earned) earned[reward.category as TaskCategory] += reward.points_value
+  // Build per-category map, defaulting to zeros for categories not yet started
+  const stats = emptyStats()
+  for (const s of rawStats) {
+    if (s.category in stats) {
+      stats[s.category as TaskCategory] = { level: s.level, xp_percent: s.xp_percent }
     }
   }
 
-  const totalXp  = Object.values(earned).reduce((a, b) => a + b, 0)
-  const level    = Math.floor(totalXp / 100) + 1
-  const progress = totalXp % 100
+  const level    = profile?.main_level ?? 0
+  // overall_xp is 0-(MAIN_XP_PER_LEVEL-1) within the current level
+  const progress = profile ? Math.round((profile.overall_xp / MAIN_XP_PER_LEVEL) * 100) : 0
+  const coins    = profile?.coins ?? 0
   const streak   = computeStreak(completions)
 
-  return { earned, totalXp, level, progress, streak }
+  return { stats, level, progress, coins, streak }
 }
